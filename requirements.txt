@@ -1,0 +1,11 @@
+pandas
+numpy
+scikit-learn
+xgboost
+transformers
+sentence-transformers
+torch
+textstat
+gradio
+joblib
+scipy
