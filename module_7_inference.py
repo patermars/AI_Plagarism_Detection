@@ -2,10 +2,13 @@ import re
 import numpy as np
 import torch
 import joblib
+import scipy.sparse as sp
 from module_1_data_prep import scrub_text
-from module_2_features import load_vectorizer, transform_features
+from module_2_features import load_vectorizer
 from module_5_bert_finetune import load_bert, SAVE_DIR
 from module_6_ensemble import get_xgb_probs, get_bert_probs, soft_vote, load_ensemble_weights
+
+META_FEATURE_COUNT = 7
 
 
 def split_into_sentences(paragraph):
@@ -14,9 +17,15 @@ def split_into_sentences(paragraph):
     return sentences
 
 
+def tfidf_with_zero_meta(vectorizer, texts):
+    tfidf_part = vectorizer.transform(texts)
+    zero_meta = sp.csr_matrix(np.zeros((len(texts), META_FEATURE_COUNT), dtype=np.float32))
+    return sp.hstack([tfidf_part, zero_meta])
+
+
 def score_paragraph(paragraph, vectorizer, xgb_model, bert_model, tokenizer, device, xgb_w, bert_w):
     cleaned = scrub_text(paragraph)
-    feats = transform_features(vectorizer, [cleaned])
+    feats = tfidf_with_zero_meta(vectorizer, [cleaned])
     xgb_prob = get_xgb_probs(xgb_model, feats)[0]
     bert_prob = get_bert_probs(bert_model, tokenizer, [cleaned], device)[0]
     blended = float(xgb_w * xgb_prob + bert_w * bert_prob)
@@ -28,7 +37,7 @@ def score_sentences(paragraph, vectorizer, xgb_model, bert_model, tokenizer, dev
     if not sentences:
         return []
     cleaned_sentences = [scrub_text(s) for s in sentences]
-    feats = transform_features(vectorizer, cleaned_sentences)
+    feats = tfidf_with_zero_meta(vectorizer, cleaned_sentences)
     xgb_probs = get_xgb_probs(xgb_model, feats)
     bert_probs = get_bert_probs(bert_model, tokenizer, cleaned_sentences, device)
     blended = xgb_w * xgb_probs + bert_w * bert_probs
@@ -56,7 +65,6 @@ def format_report(paragraph_score, sentence_scores, cutoff=0.5):
 
 def load_pipeline(vectorizer_path="tfidf_vectorizer.pkl",
                   xgb_model_path="xgb_model.pkl",
-                  xgb_encoder_path="xgb_encoder.pkl",
                   bert_dir=SAVE_DIR,
                   weights_path="ensemble_weights.pkl"):
     vectorizer = load_vectorizer(vectorizer_path)
