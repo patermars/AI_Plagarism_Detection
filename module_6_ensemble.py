@@ -84,16 +84,16 @@ if __name__ == "__main__":
     from module_4_baseline_model import load_model
     from module_5_bert_finetune import load_bert, SAVE_DIR
 
-    X_train, X_val, X_test, y_train, y_val, y_test, meta_train, meta_val, meta_test = load_and_split("data.csv")
+    X_train, X_val, X_test, y_train, y_val, y_test = load_and_split("data.csv")
 
     vectorizer, _ = fit_tfidf(X_train)
-    val_feats = transform_features(vectorizer, X_val, meta_val)
-    test_feats = transform_features(vectorizer, X_test, meta_test)
+    val_feats = transform_features(vectorizer, X_val)
+    test_feats = transform_features(vectorizer, X_test)
 
     xgb_model, xgb_encoder = load_model("xgb_model.pkl", "xgb_encoder.pkl")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    bert_model, tokenizer, bert_encoder = load_bert(SAVE_DIR)
+    bert_model, tokenizer, _ = load_bert(SAVE_DIR)
     bert_model = bert_model.to(device)
 
     xgb_val_probs = get_xgb_probs(xgb_model, val_feats)

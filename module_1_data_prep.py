@@ -14,31 +14,18 @@ def scrub_text(raw):
 
 def load_and_split(csv_path, seed=42):
     raw_df = pd.read_csv(csv_path)
-
-    text_col = "content_text"
-    label_col = "author_type"
-
-    raw_df = raw_df.dropna(subset=[text_col, label_col])
-    raw_df["clean_text"] = raw_df[text_col].apply(scrub_text)
+    raw_df = raw_df.dropna(subset=["content_text", "author_type"])
+    raw_df["clean_text"] = raw_df["content_text"].apply(scrub_text)
     raw_df = raw_df[raw_df["clean_text"].str.len() > 20].reset_index(drop=True)
 
     X = raw_df["clean_text"]
-    y = raw_df[label_col]
-    meta = raw_df[[
-        "perplexity_score",
-        "burstiness_index",
-        "syntactic_variability",
-        "semantic_coherence_score",
-        "lexical_diversity_ratio",
-        "readability_grade_level",
-        "generation_confidence_score",
-    ]].reset_index(drop=True)
+    y = raw_df["author_type"]
 
-    X_train, X_holdout, y_train, y_holdout, meta_train, meta_holdout = train_test_split(
-        X, y, meta, test_size=0.30, stratify=y, random_state=seed
+    X_train, X_holdout, y_train, y_holdout = train_test_split(
+        X, y, test_size=0.30, stratify=y, random_state=seed
     )
-    X_val, X_test, y_val, y_test, meta_val, meta_test = train_test_split(
-        X_holdout, y_holdout, meta_holdout, test_size=0.50, stratify=y_holdout, random_state=seed
+    X_val, X_test, y_val, y_test = train_test_split(
+        X_holdout, y_holdout, test_size=0.50, stratify=y_holdout, random_state=seed
     )
 
     return (
@@ -48,9 +35,6 @@ def load_and_split(csv_path, seed=42):
         y_train.reset_index(drop=True),
         y_val.reset_index(drop=True),
         y_test.reset_index(drop=True),
-        meta_train.reset_index(drop=True),
-        meta_val.reset_index(drop=True),
-        meta_test.reset_index(drop=True),
     )
 
 
@@ -61,7 +45,6 @@ def peek(X_train, y_train):
 
 
 if __name__ == "__main__":
-    X_train, X_val, X_test, y_train, y_val, y_test, meta_train, meta_val, meta_test = load_and_split("data.csv")
+    X_train, X_val, X_test, y_train, y_val, y_test = load_and_split("data.csv")
     peek(X_train, y_train)
     print(f"\nSizes — train: {len(X_train)}, val: {len(X_val)}, test: {len(X_test)}")
-    print(f"Meta features shape: {meta_train.shape}")

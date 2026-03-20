@@ -1,20 +1,17 @@
 import numpy as np
 from sentence_transformers import SentenceTransformer
-import joblib
 
 
 SBERT_MODEL = "all-MiniLM-L6-v2"
 
 
 def load_embedder(model_name=SBERT_MODEL):
-    embedder = SentenceTransformer(model_name)
-    return embedder
+    return SentenceTransformer(model_name)
 
 
 def encode_texts(embedder, texts, batch_size=64, show_bar=True):
-    text_list = list(texts)
     vectors = embedder.encode(
-        text_list,
+        list(texts),
         batch_size=batch_size,
         show_progress_bar=show_bar,
         convert_to_numpy=True,
@@ -34,7 +31,7 @@ def load_embeddings(path):
 if __name__ == "__main__":
     from module_1_data_prep import load_and_split
 
-    X_train, X_val, X_test, y_train, y_val, y_test, meta_train, meta_val, meta_test = load_and_split("data.csv")
+    X_train, X_val, X_test, y_train, y_val, y_test = load_and_split("data.csv")
 
     embedder = load_embedder()
 
