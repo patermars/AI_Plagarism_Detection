@@ -11,7 +11,7 @@ def detect(paragraph):
     overall = f"**{result['verdict']}** — AI confidence: {round(result['paragraph_ai_score']*100, 1)}%"
     rows = [{"Sentence": item["sentence"],
              "AI probability (%)": round(item["ai_probability"] * 100, 1),
-             "Flag": "AI" if item["ai_probability"] >= 0.5 else "Human"}
+             "Flag": "AI" if item["ai_probability"] >= 0.65 else "Human"}
             for item in result["sentences"]]
     return overall, pd.DataFrame(rows)
 
@@ -27,8 +27,9 @@ with gr.Blocks(title="AI Plagiarism Detector") as app:
     submit_btn.click(fn=detect, inputs=[text_input], outputs=[verdict_output, sentence_table])
     gr.Examples(
         examples=[
-            ["The large language model was trained on a diverse corpus of internet text, enabling it to generate coherent and contextually appropriate responses across a wide range of domains."],
-            ["I honestly think the way the sunset looked yesterday was something I'll never forget. It felt like the sky was on fire, and I just stood there for a while."],
+            ["The large language model was trained on a diverse corpus of internet text, enabling it to generate coherent and contextually appropriate responses."],
+            ["Cripes women in here are brutal. I am someone who has unpredictable cycles and even at my age, IN MY 40S, have accidents."],
+            ["At a time when many eateries across Bengaluru were scaling down their menus, the family moved away from LPG six years ago."],
         ],
         inputs=[text_input],
     )
