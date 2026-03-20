@@ -14,10 +14,10 @@ import time
 
 
 BERT_MODEL_NAME = "distilbert-base-uncased"
-MAX_SEQ_LEN = 256
+MAX_SEQ_LEN = 128
 BATCH_SIZE = 128
 EPOCHS = 3
-LEARNING_RATE = 2e-5
+LEARNING_RATE = 1.6e-4
 WARMUP_RATIO = 0.1
 SAVE_DIR = "distilbert_detector"
 LOG_EVERY = 50
