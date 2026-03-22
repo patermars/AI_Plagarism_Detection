@@ -73,7 +73,7 @@ python preprocessing.py
 python bert_finetune.py
 
 python inference.py
-python evaluation.py
+python evaluate.py
 python gradio_ui.py
 ```
 
