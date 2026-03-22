@@ -6,43 +6,7 @@ A binary text classifier that detects whether a given paragraph was written by a
 
 ## Architecture overview
 
-```
-Input paragraph
-      │
-      ▼
-┌─────────────────────────────────────────────┐
-│              Preprocessing                  │
-│                                             │
-│  TF-IDF path: lowercase → strip all punct   │
-│  BERT path:   strip HTML/URLs only          │
-└─────────────┬───────────────────────────────┘
-              │
-      ┌───────┴────────┐
-      │                │
-      ▼                ▼
-┌───────────┐    ┌─────────────────────┐
-│  TF-IDF   │    │   DistilBERT        │
-│  (n-gram  │    │   fine-tuned on     │
-│  1,2)     │    │   AI vs Human data  │
-│           │    │                     │
-│ LR model  │    │  seq classifier     │
-└─────┬─────┘    └────────┬────────────┘
-      │  weight=0.1       │  weight=0.9
-      └────────┬──────────┘
-               ▼
-        Weighted blend
-        AI probability
-               │
-      ┌────────┴────────┐
-      ▼                 ▼
- Paragraph score   Sentence scores
- (full paragraph   (per sentence
-  as primary)       as detail)
-               │
-               ▼
-          Verdict + Report
-```
-
+![Model Architecture](architecture.png)
 ---
 
 ## How detection works
