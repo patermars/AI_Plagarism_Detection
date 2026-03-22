@@ -1,10 +1,10 @@
-# module_8_gradio_ui.py
+# gradio_ui.py
 # Gradio web interface for the AI plagiarism detector.
 # Exposes a single text input that returns a verdict string and a per-sentence breakdown table.
 
 import gradio as gr
 import pandas as pd
-from module_7_inference import load_pipeline, run
+from inference import load_pipeline, run
 
 pipeline = load_pipeline()
 

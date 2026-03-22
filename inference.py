@@ -1,11 +1,11 @@
-# module_7_inference.py
+# inference.py
 # Inference pipeline: scores a paragraph (and its individual sentences) for AI authorship
 # using the fine-tuned DistilBERT classifier, then formats a human-readable verdict report.
 
 import re
 import numpy as np
 import torch
-from module_5_bert_finetune import load_bert, SAVE_DIR
+from bert_finetune import load_bert, SAVE_DIR
 
 
 def split_into_sentences(paragraph):

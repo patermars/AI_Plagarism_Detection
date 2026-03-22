@@ -1,4 +1,4 @@
-# module_5_bert_finetune.py
+# bert_finetune.py
 # Fine-tunes a DistilBERT sequence classifier on the AI-vs-Human corpus.
 # Saves the trained model, tokenizer, and label encoder to SAVE_DIR for inference.
 
@@ -200,7 +200,7 @@ def load_bert(save_dir=SAVE_DIR):
 
 
 if __name__ == "__main__":
-    from module_1_data_prep import load_and_split
+    from preprocessing import load_and_split
 
     X_train, X_val, X_test, y_train, y_val, y_test = load_and_split("data.csv")
     train_bert(X_train, X_val, y_train, y_val)

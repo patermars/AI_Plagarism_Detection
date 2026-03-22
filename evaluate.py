@@ -23,9 +23,9 @@ from sklearn.metrics import (
     matthews_corrcoef,
 )
 
-from module_1_data_prep import load_and_split
-from module_5_bert_finetune import load_bert, SAVE_DIR
-from module_7_inference import get_bert_probs
+from preprocessing import load_and_split
+from bert_finetune import load_bert, SAVE_DIR
+from inference import get_bert_probs
 
 
 def _print_header(title):

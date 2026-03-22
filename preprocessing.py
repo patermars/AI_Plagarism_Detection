@@ -1,4 +1,4 @@
-# module_1_data_prep.py
+# preprocessing.py
 # Cleans raw text from data.csv and produces stratified train / val / test splits
 # (70 / 15 / 15) ready for downstream feature extraction and model training.
 
