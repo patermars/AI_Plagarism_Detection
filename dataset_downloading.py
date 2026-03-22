@@ -1,3 +1,7 @@
+# dataset_downloading.py
+# Pulls raw text from five HuggingFace datasets (3 AI-labelled, 2 human-labelled),
+# balances them to 40k samples per class, and writes the combined corpus to data.csv.
+
 from datasets import load_dataset
 import pandas as pd
 
@@ -52,16 +56,18 @@ news_human = pd.DataFrame({
 })
 
 # 5. Reddit posts (casual/informal style)
-print("Loading Reddit posts...")
+# Streamed to avoid downloading the full 3.14 GB corpus — pulls exactly 10k posts on-the-fly.
+print("Loading Reddit posts (streaming)...")
 try:
-    reddit = load_dataset("webis/tldr-17", split="train")
-    reddit_df = reddit.to_pandas()
-    # Use the 'content' field which has the post body
-    content_col = "content" if "content" in reddit_df.columns else "body" if "body" in reddit_df.columns else reddit_df.columns[0]
-    reddit_human = pd.DataFrame({
-        "content_text": reddit_df[content_col].dropna().sample(n=min(10000, len(reddit_df)), random_state=42),
-        "author_type": "Human"
-    })
+    reddit_stream = load_dataset("webis/tldr-17", split="train", streaming=True)
+    records = []
+    for row in reddit_stream:
+        text = row.get("content") or row.get("body", "")
+        if text and len(text.strip()) > 100:
+            records.append(text.strip())
+        if len(records) >= 10000:
+            break
+    reddit_human = pd.DataFrame({"content_text": records, "author_type": "Human"})
     print(f"  Collected {len(reddit_human)} Reddit posts")
 except Exception as e:
     print(f"Could not load Reddit dataset ({e}), skipping...")

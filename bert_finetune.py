@@ -1,3 +1,7 @@
+# module_5_bert_finetune.py
+# Fine-tunes a DistilBERT sequence classifier on the AI-vs-Human corpus.
+# Saves the trained model, tokenizer, and label encoder to SAVE_DIR for inference.
+
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -24,6 +28,8 @@ LOG_EVERY = 50
 
 
 class ParagraphDataset(Dataset):
+    # PyTorch Dataset that tokenizes raw text on-the-fly during DataLoader iteration,
+    # avoiding the memory cost of pre-tokenizing the entire corpus upfront.
     def __init__(self, texts, labels, tokenizer, max_len=MAX_SEQ_LEN):
         self.texts = list(texts)
         self.labels = labels
@@ -49,10 +55,15 @@ class ParagraphDataset(Dataset):
 
 
 def get_device():
+    # Returns a CUDA device if a GPU is available, otherwise falls back to CPU.
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def build_data_loaders(X_train, y_train, X_val, y_val, tokenizer, encoder):
+    # Encodes string labels to integers and wraps splits in shuffled / ordered DataLoaders.
+    # Args: X_train/X_val (pd.Series) — text splits; y_train/y_val (pd.Series) — label splits;
+    #       tokenizer — DistilBertTokenizerFast; encoder — fitted LabelEncoder
+    # Returns: (train_loader, val_loader) — PyTorch DataLoader pair
     train_labels = encoder.transform(y_train)
     val_labels = encoder.transform(y_val)
     train_set = ParagraphDataset(X_train, train_labels, tokenizer)
@@ -63,6 +74,10 @@ def build_data_loaders(X_train, y_train, X_val, y_val, tokenizer, encoder):
 
 
 def train_bert(X_train, X_val, y_train, y_val):
+    # Full training loop: loads DistilBERT, runs EPOCHS passes with AdamW + linear warmup scheduler,
+    # logs loss and AUC per epoch, then saves model/tokenizer/encoder to SAVE_DIR.
+    # Args: X_train/X_val (pd.Series) — text splits; y_train/y_val (pd.Series) — label splits
+    # Returns: (model, tokenizer, encoder)
     device = get_device()
     print(f"\n{'='*60}")
     print(f"Device        : {device}")
@@ -155,6 +170,10 @@ def train_bert(X_train, X_val, y_train, y_val):
 
 
 def evaluate_bert(model, loader, device):
+    # Runs inference over a DataLoader and returns the ROC-AUC score.
+    # Used after each epoch to track generalisation without computing full metrics.
+    # Args: model — DistilBertForSequenceClassification; loader — DataLoader; device — torch.device
+    # Returns: float — ROC-AUC score
     model.eval()
     all_probs, all_labels = [], []
     with torch.no_grad():
@@ -170,6 +189,9 @@ def evaluate_bert(model, loader, device):
 
 
 def load_bert(save_dir=SAVE_DIR):
+    # Deserialises the fine-tuned model, tokenizer, and label encoder from disk.
+    # Args: save_dir (str) — directory written by train_bert()
+    # Returns: (model, tokenizer, encoder)
     import joblib
     tokenizer = DistilBertTokenizerFast.from_pretrained(save_dir)
     model = DistilBertForSequenceClassification.from_pretrained(save_dir)

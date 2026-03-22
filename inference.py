@@ -1,53 +1,80 @@
+# module_7_inference.py
+# Inference pipeline: scores a paragraph (and its individual sentences) for AI authorship
+# using the fine-tuned DistilBERT classifier, then formats a human-readable verdict report.
+
 import re
 import numpy as np
 import torch
-import joblib
-from module_1_data_prep import scrub_text, clean_for_bert
-from module_2_features import load_vectorizer, transform_features
 from module_5_bert_finetune import load_bert, SAVE_DIR
-from module_6_ensemble import get_bert_probs
 
 
 def split_into_sentences(paragraph):
+    # Splits a paragraph into individual sentences on terminal punctuation boundaries.
+    # Filters out fragments shorter than 10 characters to avoid noise.
+    # Args: paragraph (str)
+    # Returns: list[str] — cleaned sentence strings
     parts = re.split(r"(?<=[.!?])\s+", paragraph.strip())
     return [s.strip() for s in parts if len(s.strip()) > 10]
 
 
-def get_lr_probs(lr_model, vectorizer, texts):
-    """Return AI probability from Logistic Regression.
-    LabelEncoder: AI=0, Human=1 → predict_proba[:, 0] = P(AI)."""
-    feats = transform_features(vectorizer, list(texts))
-    return lr_model.predict_proba(feats)[:, 0]
+def get_bert_probs(bert_model, tokenizer, texts, device, batch_size=32, max_len=256):
+    # Runs batched forward passes through DistilBERT and returns the softmax probability
+    # for the AI class (index 0) for each input text.
+    # Args: bert_model — DistilBertForSequenceClassification; tokenizer; texts — iterable of str;
+    #       device — torch.device; batch_size (int); max_len (int) — token truncation limit
+    # Returns: np.ndarray of shape (N,), dtype float32 — AI probability per text
+    bert_model.eval()
+    all_probs = []
+    text_list = list(texts)
+    for start in range(0, len(text_list), batch_size):
+        batch_texts = text_list[start : start + batch_size]
+        encoded = tokenizer(
+            batch_texts,
+            truncation=True,
+            padding=True,
+            max_length=max_len,
+            return_tensors="pt",
+        )
+        input_ids = encoded["input_ids"].to(device)
+        attention_mask = encoded["attention_mask"].to(device)
+        with torch.no_grad():
+            output = bert_model(input_ids=input_ids, attention_mask=attention_mask)
+            probs = torch.softmax(output.logits, dim=-1)[:, 0].cpu().numpy()
+        all_probs.extend(probs)
+    return np.array(all_probs, dtype=np.float32)
 
 
-def score_paragraph(paragraph, vectorizer, lr_model, bert_model, tokenizer, device, lr_w, bert_w):
-    """Score the full paragraph first, then break down by sentence."""
+def score_paragraph(paragraph, bert_model, tokenizer, device):
+    # Scores the full paragraph as a single unit, then scores each sentence individually.
+    # Falls back to the paragraph score when fewer than 2 sentences are detected.
+    # Args: paragraph (str); bert_model; tokenizer; device — torch.device
+    # Returns: (paragraph_score: float, sentence_scores: list[dict])
+    #          sentence_scores dicts contain keys 'sentence' and 'ai_probability'
+    paragraph_prob = get_bert_probs(bert_model, tokenizer, [paragraph], device)
+    paragraph_score = float(paragraph_prob[0])
 
-    # --- Paragraph-level score (primary) ---
-    lr_clean = scrub_text(paragraph)
-    bert_clean = clean_for_bert(paragraph)
-
-    lr_prob = get_lr_probs(lr_model, vectorizer, [lr_clean])
-    bert_prob = get_bert_probs(bert_model, tokenizer, [bert_clean], device)
-    paragraph_score = float(lr_w * lr_prob[0] + bert_w * bert_prob[0])
-
-    # --- Sentence-level scores (supplementary detail) ---
     sentences = split_into_sentences(paragraph)
     sentence_scores = []
     if len(sentences) > 1:
-        lr_sent_probs = get_lr_probs(lr_model, vectorizer, [scrub_text(s) for s in sentences])
-        bert_sent_probs = get_bert_probs(bert_model, tokenizer, [clean_for_bert(s) for s in sentences], device)
-        blended = lr_w * lr_sent_probs + bert_w * bert_sent_probs
-        sentence_scores = [{"sentence": s, "ai_probability": round(float(p), 4)}
-                           for s, p in zip(sentences, blended)]
+        sent_probs = get_bert_probs(bert_model, tokenizer, sentences, device)
+        sentence_scores = [
+            {"sentence": s, "ai_probability": round(float(p), 4)}
+            for s, p in zip(sentences, sent_probs)
+        ]
     else:
-        # Only one sentence — reuse the paragraph score
-        sentence_scores = [{"sentence": paragraph.strip(), "ai_probability": round(paragraph_score, 4)}]
+        sentence_scores = [
+            {"sentence": paragraph.strip(), "ai_probability": round(paragraph_score, 4)}
+        ]
 
     return paragraph_score, sentence_scores
 
 
 def format_report(paragraph_score, sentence_scores):
+    # Maps the paragraph AI probability to a verdict label, prints a formatted report,
+    # and returns a structured result dict for programmatic consumption.
+    # Args: paragraph_score (float) — AI probability [0, 1];
+    #       sentence_scores (list[dict]) — per-sentence scores from score_paragraph()
+    # Returns: dict with keys 'verdict', 'paragraph_ai_score', 'sentences'
     if paragraph_score >= 0.85:
         verdict = "Very likely AI-generated"
     elif paragraph_score >= 0.65:
@@ -69,22 +96,22 @@ def format_report(paragraph_score, sentence_scores):
     return {"verdict": verdict, "paragraph_ai_score": paragraph_score, "sentences": sentence_scores}
 
 
-def load_pipeline(vectorizer_path="tfidf_vectorizer.pkl",
-                  lr_model_path="lr_model.pkl",
-                  bert_dir=SAVE_DIR):
-    vectorizer = load_vectorizer(vectorizer_path)
-    lr_model = joblib.load(lr_model_path)
+def load_pipeline(bert_dir=SAVE_DIR):
+    # Loads the fine-tuned DistilBERT model and moves it to the best available device.
+    # Args: bert_dir (str) — directory containing saved model artefacts
+    # Returns: (bert_model, tokenizer, device)
     bert_model, tokenizer, _ = load_bert(bert_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     bert_model = bert_model.to(device)
-    lr_w  = 0.1
-    bert_w = 0.9
-    return vectorizer, lr_model, bert_model, tokenizer, device, lr_w, bert_w
+    return bert_model, tokenizer, device
 
 
-def run(paragraph, vectorizer, lr_model, bert_model, tokenizer, device, lr_w, bert_w):
+def run(paragraph, bert_model, tokenizer, device):
+    # End-to-end entry point: scores a paragraph and returns the formatted verdict dict.
+    # Args: paragraph (str); bert_model; tokenizer; device — torch.device
+    # Returns: dict — same structure as format_report()
     paragraph_score, sentence_scores = score_paragraph(
-        paragraph, vectorizer, lr_model, bert_model, tokenizer, device, lr_w, bert_w
+        paragraph, bert_model, tokenizer, device
     )
     return format_report(paragraph_score, sentence_scores)
 

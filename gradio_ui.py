@@ -1,3 +1,7 @@
+# module_8_gradio_ui.py
+# Gradio web interface for the AI plagiarism detector.
+# Exposes a single text input that returns a verdict string and a per-sentence breakdown table.
+
 import gradio as gr
 import pandas as pd
 from module_7_inference import load_pipeline, run
@@ -5,6 +9,10 @@ from module_7_inference import load_pipeline, run
 pipeline = load_pipeline()
 
 def detect(paragraph):
+    # Validates input, runs the inference pipeline, and formats outputs for the Gradio UI.
+    # Args: paragraph (str) — raw user-submitted text
+    # Returns: (verdict_md: str, breakdown: pd.DataFrame)
+    #          verdict_md is a Markdown string; breakdown has columns Sentence / AI probability (%) / Flag
     if not paragraph or len(paragraph.strip()) < 20:
         return "Please enter at least a sentence.", pd.DataFrame()
     result = run(paragraph, *pipeline)

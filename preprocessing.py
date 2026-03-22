@@ -1,20 +1,17 @@
+# module_1_data_prep.py
+# Cleans raw text from data.csv and produces stratified train / val / test splits
+# (70 / 15 / 15) ready for downstream feature extraction and model training.
+
 import pandas as pd
 import re
 from sklearn.model_selection import train_test_split
 
 
-def scrub_text(raw):
-    """Heavy cleaning for TF-IDF: lowercase, strip HTML/URLs/punctuation."""
-    lowered = raw.lower()
-    no_html = re.sub(r"<[^>]+>", " ", lowered)
-    no_urls = re.sub(r"http\S+|www\S+", " ", no_html)
-    no_punct = re.sub(r"[^a-z0-9\s]", " ", no_urls)
-    collapsed = re.sub(r"\s+", " ", no_punct).strip()
-    return collapsed
-
-
-def clean_for_bert(raw):
-    """Light cleaning for BERT: keep punctuation and casing, only strip HTML/URLs."""
+def clean_text(raw):
+    # Strips HTML tags and URLs, then collapses whitespace.
+    # Preserves punctuation and casing — both are meaningful features for DistilBERT.
+    # Args: raw (str) — unprocessed text string
+    # Returns: str — lightly cleaned text
     no_html = re.sub(r"<[^>]+>", " ", raw)
     no_urls = re.sub(r"http\S+|www\S+", " ", no_html)
     collapsed = re.sub(r"\s+", " ", no_urls).strip()
@@ -22,9 +19,13 @@ def clean_for_bert(raw):
 
 
 def load_and_split(csv_path, seed=42):
+    # Reads data.csv, cleans text, drops short entries, and returns stratified splits.
+    # Split ratio: 70% train, 15% val, 15% test — stratified on author_type.
+    # Args: csv_path (str) — path to data.csv; seed (int) — random seed for reproducibility
+    # Returns: tuple of six pd.Series — (X_train, X_val, X_test, y_train, y_val, y_test)
     raw_df = pd.read_csv(csv_path)
     raw_df = raw_df.dropna(subset=["content_text", "author_type"])
-    raw_df["clean_text"] = raw_df["content_text"].apply(clean_for_bert)
+    raw_df["clean_text"] = raw_df["content_text"].apply(clean_text)
     raw_df = raw_df[raw_df["clean_text"].str.len() > 20].reset_index(drop=True)
 
     X = raw_df["clean_text"]
@@ -48,6 +49,8 @@ def load_and_split(csv_path, seed=42):
 
 
 def peek(X_train, y_train):
+    # Prints class distribution and a sample entry from the training set — quick sanity check.
+    # Args: X_train (pd.Series) — training texts; y_train (pd.Series) — training labels
     summary = pd.Series(y_train).value_counts()
     print("Train label distribution:\n", summary)
     print("\nSample entry:\n", X_train.iloc[0])
