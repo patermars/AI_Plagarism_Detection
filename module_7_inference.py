@@ -2,7 +2,7 @@ import re
 import numpy as np
 import torch
 import joblib
-from module_1_data_prep import scrub_text
+from module_1_data_prep import scrub_text, clean_for_bert
 from module_2_features import load_vectorizer, transform_features
 from module_5_bert_finetune import load_bert, SAVE_DIR
 from module_6_ensemble import get_bert_probs
@@ -14,25 +14,36 @@ def split_into_sentences(paragraph):
 
 
 def get_lr_probs(lr_model, vectorizer, texts):
+    """Return AI probability from Logistic Regression.
+    LabelEncoder: AI=0, Human=1 → predict_proba[:, 0] = P(AI)."""
     feats = transform_features(vectorizer, list(texts))
     return lr_model.predict_proba(feats)[:, 0]
 
 
-def score_sentences(paragraph, vectorizer, lr_model, bert_model, tokenizer, device, lr_w, bert_w):
-    sentences = split_into_sentences(paragraph)
-    if not sentences:
-        cleaned = scrub_text(paragraph)
-        sentences = [paragraph]
-        lr_probs = get_lr_probs(lr_model, vectorizer, [cleaned])
-        bert_probs = get_bert_probs(bert_model, tokenizer, [cleaned], device)
-    else:
-        lr_probs = get_lr_probs(lr_model, vectorizer, [scrub_text(s) for s in sentences])
-        bert_probs = get_bert_probs(bert_model, tokenizer, [scrub_text(s) for s in sentences], device)
+def score_paragraph(paragraph, vectorizer, lr_model, bert_model, tokenizer, device, lr_w, bert_w):
+    """Score the full paragraph first, then break down by sentence."""
 
-    blended = lr_w * lr_probs + bert_w * bert_probs
-    sentence_scores = [{"sentence": s, "ai_probability": round(float(p), 4)}
-                       for s, p in zip(sentences, blended)]
-    paragraph_score = float(np.mean(blended))
+    # --- Paragraph-level score (primary) ---
+    lr_clean = scrub_text(paragraph)
+    bert_clean = clean_for_bert(paragraph)
+
+    lr_prob = get_lr_probs(lr_model, vectorizer, [lr_clean])
+    bert_prob = get_bert_probs(bert_model, tokenizer, [bert_clean], device)
+    paragraph_score = float(lr_w * lr_prob[0] + bert_w * bert_prob[0])
+
+    # --- Sentence-level scores (supplementary detail) ---
+    sentences = split_into_sentences(paragraph)
+    sentence_scores = []
+    if len(sentences) > 1:
+        lr_sent_probs = get_lr_probs(lr_model, vectorizer, [scrub_text(s) for s in sentences])
+        bert_sent_probs = get_bert_probs(bert_model, tokenizer, [clean_for_bert(s) for s in sentences], device)
+        blended = lr_w * lr_sent_probs + bert_w * bert_sent_probs
+        sentence_scores = [{"sentence": s, "ai_probability": round(float(p), 4)}
+                           for s, p in zip(sentences, blended)]
+    else:
+        # Only one sentence — reuse the paragraph score
+        sentence_scores = [{"sentence": paragraph.strip(), "ai_probability": round(paragraph_score, 4)}]
+
     return paragraph_score, sentence_scores
 
 
@@ -72,7 +83,7 @@ def load_pipeline(vectorizer_path="tfidf_vectorizer.pkl",
 
 
 def run(paragraph, vectorizer, lr_model, bert_model, tokenizer, device, lr_w, bert_w):
-    paragraph_score, sentence_scores = score_sentences(
+    paragraph_score, sentence_scores = score_paragraph(
         paragraph, vectorizer, lr_model, bert_model, tokenizer, device, lr_w, bert_w
     )
     return format_report(paragraph_score, sentence_scores)
@@ -80,9 +91,36 @@ def run(paragraph, vectorizer, lr_model, bert_model, tokenizer, device, lr_w, be
 
 if __name__ == "__main__":
     samples = {
-        "AI sample"    : "It sounds like it should be a winner—a gripping sci-fi crime story about a brilliant medical examiner unraveling sinister murders in space, backed by a stellar cast including Nicole Kidman, Jamie Lee Curtis, Bobby Cannavale, and Simon Baker. But somehow, it misses the mark completely. Instead of delivering suspense or intrigue, it drags along as a bleak, tedious drama centered on the personal issues of thoroughly unlikable characters. And when the story occasionally remembers there are actual crimes to solve, the investigations feel flat, lacking any real tension or excitement.",
-        "Human sample" : "It's supposedly about a brilliant medical examiner who solves baffling crimes involving serial predators and murders aboard spaceships, and it stars Nicole Kidman, Jamie Lee Curtis, Bobby Cannavale and Simon Baker: how could it not be good? Pretty easily, as it turns out, because the people behind this dour trainwreck clearly didn't understand the assignment. It's a tedious relationship drama about the interpersonal tribulations of a bunch of unlikeable clods. On the rare occasions that the dopey script remembers that there are crimes afoot, it doesn't imbue the investigations with any tension or intrigue.",
-        "News article" : "ISRO’s NavIC constellation, for which it has launched 11 satellites since 2013, is in operational distress. Only three satellites remain capable of providing position, navigation, and timing (PNT) services, leaving the constellation unable to fulfil its purpose of replacing the U.S.’s GPS system over the Indian subcontinent. A PNT constellation requires at least four PNT-capable satellites, and India had only four until ISRO said an atomic clock onboard the IRNSS-1F satellite failed on March 13. The constellation’s first-generation satellites use rubidium atomic clocks made by Swiss company SpectraTime, and which have been dogged by failure. ISRO’s latest attempt to launch a second-generation satellite, NVS-02, was abortive after the machine was left in the wrong orbit. IRNSS-1F, launched in March 2016, completed its 10-year design life just three days before its clock failed. Eight other satellites have either been decommissioned, have failed to reach orbit or have bad clocks. In 2018, ISRO transitioned to using indigenous rubidium atomic clocks, developed by the ISRO-Space Applications Centre. NVS-01, launched in May 2023, was the first to carry the device; all second-generation NVS series satellites will too.",
+        "AI sample (ChatGPT)": (
+            "It sounds like it should be a winner — a gripping sci-fi crime story about a "
+            "brilliant medical examiner unraveling sinister murders in space, backed by a "
+            "stellar cast including Nicole Kidman, Jamie Lee Curtis, Bobby Cannavale, and "
+            "Simon Baker. But somehow, it misses the mark completely. Instead of delivering "
+            "suspense or intrigue, it drags along as a bleak, tedious drama centered on the "
+            "personal issues of thoroughly unlikable characters."
+        ),
+        "Human sample (natural voice)": (
+            "It's supposedly about a brilliant medical examiner who solves baffling crimes "
+            "involving serial predators and murders aboard spaceships, and it stars Nicole "
+            "Kidman, Jamie Lee Curtis, Bobby Cannavale and Simon Baker: how could it not be "
+            "good? Pretty easily, as it turns out, because the people behind this dour "
+            "trainwreck clearly didn't understand the assignment."
+        ),
+        "News article (The Hindu / ISRO)": (
+            "ISRO's NavIC constellation, for which it has launched 11 satellites since 2013, "
+            "is in operational distress. Only three satellites remain capable of providing "
+            "position, navigation, and timing (PNT) services, leaving the constellation "
+            "unable to fulfil its purpose of replacing the U.S.'s GPS system over the Indian "
+            "subcontinent. A PNT constellation requires at least four PNT-capable satellites, "
+            "and India had only four until ISRO said an atomic clock onboard the IRNSS-1F "
+            "satellite failed on March 13."
+        ),
+        "Reddit post (informal)": (
+            "Cripes women in here are brutal. I am someone who has unpredictable cycles and "
+            "even at my age, IN MY 40S, have accidents. It doesn't matter how careful you "
+            "are, sometimes it just happens. But nah, let's shame people for bodily functions "
+            "they can't control, real mature."
+        ),
     }
     pipeline = load_pipeline()
     for label, text in samples.items():

@@ -29,7 +29,7 @@ def get_bert_probs(bert_model, tokenizer, texts, device, batch_size=32, max_len=
         attention_mask = encoded["attention_mask"].to(device)
         with torch.no_grad():
             output = bert_model(input_ids=input_ids, attention_mask=attention_mask)
-            probs = torch.softmax(output.logits, dim=-1)[:, 1].cpu().numpy()
+            probs = torch.softmax(output.logits, dim=-1)[:, 0].cpu().numpy()
         all_probs.extend(probs)
     return np.array(all_probs, dtype=np.float32)
 
@@ -79,30 +79,36 @@ def tune_ensemble_weights(xgb_probs_val, bert_probs_val, y_val, encoder, steps=2
 
 
 if __name__ == "__main__":
-    from module_1_data_prep import load_and_split
+    from module_1_data_prep import load_and_split, scrub_text
     from module_2_features import fit_tfidf, transform_features
     from module_4_baseline_model import load_model
     from module_5_bert_finetune import load_bert, SAVE_DIR
 
     X_train, X_val, X_test, y_train, y_val, y_test = load_and_split("data.csv")
 
-    vectorizer, _ = fit_tfidf(X_train)
-    val_feats = transform_features(vectorizer, X_val)
-    test_feats = transform_features(vectorizer, X_test)
+    # TF-IDF needs heavy cleaning
+    X_train_tfidf = X_train.apply(scrub_text)
+    X_val_tfidf = X_val.apply(scrub_text)
+    X_test_tfidf = X_test.apply(scrub_text)
 
-    xgb_model, xgb_encoder = load_model("xgb_model.pkl", "xgb_encoder.pkl")
+    vectorizer, _ = fit_tfidf(X_train_tfidf)
+    val_feats = transform_features(vectorizer, X_val_tfidf)
+    test_feats = transform_features(vectorizer, X_test_tfidf)
+
+    lr_model, lr_encoder = load_model("lr_model.pkl", "lr_encoder.pkl")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     bert_model, tokenizer, _ = load_bert(SAVE_DIR)
     bert_model = bert_model.to(device)
 
-    xgb_val_probs = get_xgb_probs(xgb_model, val_feats)
+    # LR AI probs = predict_proba[:, 0] (AI=class 0)
+    lr_val_probs = lr_model.predict_proba(val_feats)[:, 0]
     bert_val_probs = get_bert_probs(bert_model, tokenizer, X_val, device)
 
-    best_xgb_w, best_bert_w = tune_ensemble_weights(xgb_val_probs, bert_val_probs, y_val, xgb_encoder)
-    save_ensemble_weights(best_xgb_w, best_bert_w)
+    best_lr_w, best_bert_w = tune_ensemble_weights(lr_val_probs, bert_val_probs, y_val, lr_encoder)
+    save_ensemble_weights(best_lr_w, best_bert_w)
 
-    xgb_test_probs = get_xgb_probs(xgb_model, test_feats)
+    lr_test_probs = lr_model.predict_proba(test_feats)[:, 0]
     bert_test_probs = get_bert_probs(bert_model, tokenizer, X_test, device)
-    final_probs = soft_vote(xgb_test_probs, bert_test_probs, best_xgb_w, best_bert_w)
-    evaluate_ensemble(final_probs, y_test, xgb_encoder)
+    final_probs = soft_vote(lr_test_probs, bert_test_probs, best_lr_w, best_bert_w)
+    evaluate_ensemble(final_probs, y_test, lr_encoder)

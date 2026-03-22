@@ -36,13 +36,17 @@ def load_model(model_path, encoder_path):
 
 
 if __name__ == "__main__":
-    from module_1_data_prep import load_and_split
+    from module_1_data_prep import load_and_split, scrub_text
     from module_2_features import fit_tfidf, transform_features
 
     X_train, X_val, X_test, y_train, y_val, y_test = load_and_split("data.csv")
 
-    vectorizer, train_feats = fit_tfidf(X_train)
-    val_feats = transform_features(vectorizer, X_val)
+    # Apply heavy cleaning for TF-IDF
+    X_train_tfidf = X_train.apply(scrub_text)
+    X_val_tfidf = X_val.apply(scrub_text)
+
+    vectorizer, train_feats = fit_tfidf(X_train_tfidf)
+    val_feats = transform_features(vectorizer, X_val_tfidf)
 
     print("Training Logistic Regression...")
     lr_model, enc_lr = train_logistic(train_feats, y_train)

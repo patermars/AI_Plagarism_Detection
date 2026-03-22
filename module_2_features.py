@@ -28,12 +28,16 @@ def load_vectorizer(path="tfidf_vectorizer.pkl"):
 
 
 if __name__ == "__main__":
-    from module_1_data_prep import load_and_split
+    from module_1_data_prep import load_and_split, scrub_text
 
     X_train, X_val, X_test, y_train, y_val, y_test = load_and_split("data.csv")
 
-    vectorizer, train_feats = fit_tfidf(X_train)
-    val_feats = transform_features(vectorizer, X_val)
+    # Apply heavy cleaning for TF-IDF (scrub_text strips punct/case)
+    X_train_tfidf = X_train.apply(scrub_text)
+    X_val_tfidf = X_val.apply(scrub_text)
+
+    vectorizer, train_feats = fit_tfidf(X_train_tfidf)
+    val_feats = transform_features(vectorizer, X_val_tfidf)
 
     print("Train feature matrix shape:", train_feats.shape)
     print("Val feature matrix shape  :", val_feats.shape)

@@ -4,6 +4,7 @@ from sklearn.model_selection import train_test_split
 
 
 def scrub_text(raw):
+    """Heavy cleaning for TF-IDF: lowercase, strip HTML/URLs/punctuation."""
     lowered = raw.lower()
     no_html = re.sub(r"<[^>]+>", " ", lowered)
     no_urls = re.sub(r"http\S+|www\S+", " ", no_html)
@@ -12,10 +13,18 @@ def scrub_text(raw):
     return collapsed
 
 
+def clean_for_bert(raw):
+    """Light cleaning for BERT: keep punctuation and casing, only strip HTML/URLs."""
+    no_html = re.sub(r"<[^>]+>", " ", raw)
+    no_urls = re.sub(r"http\S+|www\S+", " ", no_html)
+    collapsed = re.sub(r"\s+", " ", no_urls).strip()
+    return collapsed
+
+
 def load_and_split(csv_path, seed=42):
     raw_df = pd.read_csv(csv_path)
     raw_df = raw_df.dropna(subset=["content_text", "author_type"])
-    raw_df["clean_text"] = raw_df["content_text"].apply(scrub_text)
+    raw_df["clean_text"] = raw_df["content_text"].apply(clean_for_bert)
     raw_df = raw_df[raw_df["clean_text"].str.len() > 20].reset_index(drop=True)
 
     X = raw_df["clean_text"]
