@@ -1,6 +1,6 @@
 # AI Plagiarism Detection
 
-This project is a simple binary text classifier that tries to answer one question: does a piece of writing look more like human writing or AI-generated writing?
+This project is simple binary text classifier that tries to answer one question: does a piece of writing look more like human writing or AI-generated writing?
 
 The model behind it is a fine-tuned DistilBERT classifier trained on a mixed dataset of essays, Q&A responses, Wikipedia-style text, news articles, and Reddit posts. The repository also includes a saved model under `distilbert_detector/`, so the project is not just training code on paper; there is already a trained checkpoint in the repo.
 
