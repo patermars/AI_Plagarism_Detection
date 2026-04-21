@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Detector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Tokens ── */
+    :root {
+      --bg:        #F7F8FA;
+      --surface:   #FFFFFF;
+      --border:    #E8ECF0;
+      --text:      #1A202C;
+      --muted:     #718096;
+      --subtle:    #A0AEC0;
+
+      /* Primary — teal */
+      --p-500:     #0D9488;
+      --p-400:     #14B8A6;
+      --p-100:     #CCFBF1;
+      --p-50:      #F0FDFA;
+
+      /* Confidence colours */
+      --c-ai-bg:      rgba(239, 68,  68,  .13);
+      --c-ai-text:    #B91C1C;
+      --c-ai-bar:     linear-gradient(90deg, #FCA5A5, #EF4444);
+
+      --c-pos-bg:     rgba(249, 115, 22,  .13);
+      --c-pos-text:   #C2410C;
+      --c-pos-bar:    linear-gradient(90deg, #FDBA74, #F97316);
+
+      --c-unc-bg:     rgba(234, 179,  8,  .13);
+      --c-unc-text:   #A16207;
+      --c-unc-bar:    linear-gradient(90deg, #FDE68A, #EAB308);
+
+      --c-hum-bg:     rgba( 16, 185, 129, .13);
+      --c-hum-text:   #065F46;
+      --c-hum-bar:    linear-gradient(90deg, #6EE7B7, #10B981);
+
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --radius-sm:  8px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.04);
+    }
+
+    /* ── Base ── */
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow-sm);
+      position: sticky; top: 0; z-index: 100;
+    }
+
+    .logo {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--p-500), #0F766E);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 800; font-size: 15px;
+      letter-spacing: -.5px;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 17px; font-weight: 700; color: var(--text);
+      letter-spacing: -.3px;
+    }
+
+    .badge {
+      font-size: 11px; font-weight: 600;
+      background: var(--p-100); color: var(--p-500);
+      padding: 2px 9px; border-radius: 20px;
+      margin-left: 2px;
+    }
+
+    /* ── Main ── */
+    main {
+      width: 100%; max-width: 860px;
+      padding: 36px 20px 60px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+
+    /* ── Hero text ── */
+    .hero {
+      text-align: center;
+      padding: 8px 0 4px;
+    }
+
+    .hero h2 {
+      font-size: 28px; font-weight: 800;
+      color: var(--text); letter-spacing: -.6px;
+      line-height: 1.25;
+    }
+
+    .hero p {
+      margin-top: 8px;
+      font-size: 15px; color: var(--muted);
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      margin: 20px 20px 0;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-md);
+      padding: 22px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: background .18s, border-color .18s;
+      background: var(--bg);
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      background: var(--p-50);
+      border-color: var(--p-400);
+    }
+
+    .drop-zone svg { display: block; margin: 0 auto 10px; }
+
+    .drop-zone p {
+      font-size: 14px; color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .drop-zone p strong {
+      color: var(--p-500); cursor: pointer; font-weight: 600;
+    }
+
+    .drop-zone small {
+      display: block; margin-top: 4px;
+      font-size: 12px; color: var(--subtle);
+    }
+
+    #fileInput { display: none; }
+
+    /* ── File pill ── */
+    .file-pill {
+      display: none;
+      align-items: center; gap: 8px;
+      background: var(--p-100);
+      border-radius: var(--radius-sm);
+      padding: 5px 12px;
+      margin: 10px 20px 0;
+      width: fit-content;
+      font-size: 13px; color: var(--p-500); font-weight: 500;
+    }
+
+    .file-pill button {
+      background: none; border: none; cursor: pointer;
+      color: var(--p-500); font-size: 17px; line-height: 1;
+      padding: 0 2px; opacity: .7;
+    }
+
+    .file-pill button:hover { opacity: 1; }
+
+    /* ── Divider ── */
+    .or-divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 14px 20px 0;
+      font-size: 12px; color: var(--subtle); font-weight: 500;
+    }
+
+    .or-divider::before, .or-divider::after {
+      content: ''; flex: 1;
+      height: 1px; background: var(--border);
+    }
+
+    /* ── Textarea ── */
+    textarea {
+      width: 100%; min-height: 160px;
+      border: none; outline: none; resize: vertical;
+      font-size: 15px; line-height: 1.75; color: var(--text);
+      padding: 16px 20px;
+      font-family: inherit;
+      background: transparent;
+    }
+
+    textarea::placeholder { color: var(--subtle); }
+
+    /* ── Input footer ── */
+    .input-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      background: #FAFBFC;
+    }
+
+    #charCount { font-size: 13px; color: var(--subtle); }
+
+    /* ── Analyze button ── */
+    .btn-analyze {
+      background: linear-gradient(135deg, var(--p-500), #0F766E);
+      color: #fff; border: none; border-radius: var(--radius-sm);
+      padding: 10px 26px; font-size: 14px; font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      transition: opacity .2s, transform .1s;
+      letter-spacing: .01em;
+      box-shadow: 0 2px 8px rgba(13,148,136,.30);
+    }
+
+    .btn-analyze:hover { opacity: .88; }
+    .btn-analyze:active { transform: scale(.97); }
+    .btn-analyze:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 15px; height: 15px;
+      border: 2px solid rgba(255,255,255,.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error ── */
+    #errorMsg {
+      display: none;
+      background: #FEF2F2; color: #B91C1C;
+      border: 1px solid #FECACA;
+      padding: 12px 18px; border-radius: var(--radius-md);
+      font-size: 14px; font-weight: 500;
+    }
+
+    /* ── Score section ── */
+    #scoreSection { display: none; }
+
+    .score-inner { padding: 24px 24px 20px; }
+
+    .score-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .score-label {
+      font-size: 12px; font-weight: 600; color: var(--subtle);
+      text-transform: uppercase; letter-spacing: .06em;
+      margin-bottom: 6px;
+    }
+
+    .score-pct {
+      font-size: 42px; font-weight: 800;
+      letter-spacing: -1.5px; line-height: 1;
+    }
+
+    .verdict-badge {
+      font-size: 13px; font-weight: 600;
+      padding: 6px 14px; border-radius: 20px;
+      white-space: nowrap;
+      margin-top: 4px;
+    }
+
+    /* ── Bar ── */
+    .bar-track {
+      height: 8px; background: var(--border);
+      border-radius: 99px; overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%; border-radius: 99px;
+      transition: width .9s cubic-bezier(.4,0,.2,1);
+      width: 0%;
+    }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex; gap: 18px; margin-top: 16px; flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted);
+    }
+
+    .legend-dot {
+      width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
+    }
+
+    /* ── Result section ── */
+    #resultSection {
+      display: none;
+      padding: 20px 24px 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    #resultSection h3 {
+      font-size: 11px; font-weight: 700; color: var(--subtle);
+      text-transform: uppercase; letter-spacing: .08em;
+      margin-bottom: 16px;
+    }
+
+    #highlightedText {
+      font-size: 15px; line-height: 2.1; color: var(--text);
+    }
+
+    /* ── Sentence highlights ── */
+    .sent {
+      border-radius: 4px;
+      padding: 2px 4px;
+      cursor: default;
+      position: relative;
+      transition: filter .15s;
+    }
+
+    .sent:hover { filter: brightness(.91); }
+
+    .sent::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 7px);
+      left: 50%; transform: translateX(-50%);
+      background: var(--text); color: #fff;
+      font-size: 11px; font-weight: 500;
+      white-space: nowrap;
+      padding: 4px 10px; border-radius: 6px;
+      pointer-events: none; opacity: 0;
+      transition: opacity .15s;
+      z-index: 20;
+      box-shadow: 0 2px 8px rgba(0,0,0,.18);
+    }
+
+    .sent:hover::after { opacity: 1; }
+
+    /* Colour classes */
+    .c-very-ai   { background: var(--c-ai-bg); }
+    .c-possibly  { background: var(--c-pos-bg); }
+    .c-uncertain { background: var(--c-unc-bg); }
+    .c-human     { background: var(--c-hum-bg); }
+
+    /* Verdict badge colours */
+    .v-very-ai   { background: #FEE2E2; color: var(--c-ai-text); }
+    .v-possibly  { background: #FFEDD5; color: var(--c-pos-text); }
+    .v-uncertain { background: #FEF9C3; color: var(--c-unc-text); }
+    .v-human     { background: #D1FAE5; color: var(--c-hum-text); }
+
+    /* Bar colours */
+    .bar-very-ai   { background: var(--c-ai-bar); }
+    .bar-possibly  { background: var(--c-pos-bar); }
+    .bar-uncertain { background: var(--c-unc-bar); }
+    .bar-human     { background: var(--c-hum-bar); }
+
+    /* Score pct colours */
+    .score-very-ai   { color: #EF4444; }
+    .score-possibly  { color: #F97316; }
+    .score-uncertain { color: #EAB308; }
+    .score-human     { color: #10B981; }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 12px; margin-top: 20px;
+    }
+
+    .stat-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      text-align: center;
+    }
+
+    .stat-box .stat-val {
+      font-size: 20px; font-weight: 800; color: var(--text);
+      letter-spacing: -.5px;
+    }
+
+    .stat-box .stat-lbl {
+      font-size: 11px; color: var(--muted); margin-top: 3px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">AI</div>
+  <h1>AI Detector</h1>
+  <span class="badge">DistilBERT</span>
+</header>
+
+<!-- ── Main ── -->
+<main>
+
+  <div class="hero">
+    <h2>Is this text AI-generated?</h2>
+    <p>Paste text or upload a file — get sentence-level confidence highlights instantly.</p>
+  </div>
+
+  <div id="errorMsg"></div>
+
+  <!-- Input card -->
+  <div class="card">
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <svg width="30" height="30" fill="none" viewBox="0 0 24 24" stroke="#0D9488" stroke-width="1.6">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+      </svg>
+      <p><strong>Click to upload</strong> or drag &amp; drop</p>
+      <small>.txt &nbsp;·&nbsp; .pdf &nbsp;·&nbsp; .docx</small>
+    </div>
+    <input type="file" id="fileInput" accept=".txt,.pdf,.docx" onchange="handleFile(this.files[0])" />
+
+    <!-- File pill -->
+    <div class="file-pill" id="filePill">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+      </svg>
+      <span id="fileName"></span>
+      <button onclick="clearFile()" title="Remove">×</button>
+    </div>
+
+    <!-- Divider -->
+    <div class="or-divider">or type / paste below</div>
+
+    <textarea id="inputText"
+      placeholder="Paste or type your text here…"
+      oninput="updateCount()"></textarea>
+
+    <div class="input-footer">
+      <span id="charCount">0 characters</span>
+      <button class="btn-analyze" id="analyzeBtn" onclick="analyze()">
+        <div class="spinner" id="spinner"></div>
+        <span id="btnLabel">Analyze Text</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Results card -->
+  <div class="card" id="scoreSection">
+    <div class="score-inner">
+      <div class="score-header">
+        <div>
+          <div class="score-label">AI Confidence</div>
+          <div class="score-pct" id="scorePct">—</div>
+        </div>
+        <div class="verdict-badge" id="verdictBadge">—</div>
+      </div>
+
+      <div class="bar-track">
+        <div class="bar-fill" id="barFill"></div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#EF4444"></div>Very likely AI ≥85%
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#F97316"></div>Possibly AI 65–85%
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#EAB308"></div>Uncertain 40–65%
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#10B981"></div>Likely Human &lt;40%
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val" id="statSentences">—</div>
+          <div class="stat-lbl">Sentences</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="statAI">—</div>
+          <div class="stat-lbl">AI sentences</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="statHuman">—</div>
+          <div class="stat-lbl">Human sentences</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Highlighted text -->
+    <div id="resultSection">
+      <h3>Sentence-level breakdown</h3>
+      <div id="highlightedText"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  /* ── Helpers ── */
+  function updateCount() {
+    const n = document.getElementById('inputText').value.length;
+    document.getElementById('charCount').textContent = n.toLocaleString() + ' character' + (n !== 1 ? 's' : '');
+  }
+
+  function sentClass(p) {
+    if (p >= .85) return 'c-very-ai';
+    if (p >= .65) return 'c-possibly';
+    if (p >= .40) return 'c-uncertain';
+    return 'c-human';
+  }
+
+  function scoreClass(s) {
+    if (s >= 85) return 'very-ai';
+    if (s >= 65) return 'possibly';
+    if (s >= 40) return 'uncertain';
+    return 'human';
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function setLoading(on, label) {
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = on;
+    document.getElementById('spinner').style.display = on ? 'block' : 'none';
+    document.getElementById('btnLabel').textContent = label || 'Analyze Text';
+  }
+
+  /* ── Drag & drop ── */
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+
+  /* ── File upload ── */
+  async function handleFile(file) {
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!['.txt','.pdf','.docx'].includes(ext)) {
+      errEl.textContent = 'Unsupported file type. Use .txt, .pdf, or .docx';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('filePill').style.display = 'flex';
+    setLoading(true, 'Extracting…');
+
+    const form = new FormData();
+    form.append('file', file);
+
+    try {
+      const res  = await fetch('/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        errEl.textContent = data.error || 'Could not read file.';
+        errEl.style.display = 'block';
+        clearFile(); return;
+      }
+      document.getElementById('inputText').value = data.text;
+      updateCount();
+      await analyze();
+    } catch {
+      errEl.textContent = 'Network error. Is the server running?';
+      errEl.style.display = 'block';
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function clearFile() {
+    document.getElementById('fileInput').value = '';
+    document.getElementById('filePill').style.display = 'none';
+    document.getElementById('fileName').textContent = '';
+    document.getElementById('inputText').value = '';
+    document.getElementById('scoreSection').style.display = 'none';
+    document.getElementById('errorMsg').style.display = 'none';
+    updateCount();
+  }
+
+  /* ── Analyze ── */
+  async function analyze() {
+    const text  = document.getElementById('inputText').value.trim();
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+
+    if (text.length < 20) {
+      errEl.textContent = 'Please enter at least a sentence.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    setLoading(true, 'Analyzing…');
+
+    try {
+      const res  = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        errEl.textContent = data.error || 'Something went wrong.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      const cls = scoreClass(data.ai_score);
+
+      /* score bar */
+      document.getElementById('scorePct').textContent  = data.ai_score + '%';
+      document.getElementById('scorePct').className    = 'score-pct score-' + cls;
+      document.getElementById('verdictBadge').textContent = data.verdict;
+      document.getElementById('verdictBadge').className   = 'verdict-badge v-' + cls;
+      document.getElementById('barFill').style.width   = data.ai_score + '%';
+      document.getElementById('barFill').className     = 'bar-fill bar-' + cls;
+
+      /* stats */
+      const total   = data.sentences.length;
+      const aiCount = data.sentences.filter(s => s.ai_probability >= .65).length;
+      document.getElementById('statSentences').textContent = total;
+      document.getElementById('statAI').textContent        = aiCount;
+      document.getElementById('statHuman').textContent     = total - aiCount;
+
+      /* highlighted sentences */
+      document.getElementById('highlightedText').innerHTML =
+        data.sentences.map(s => {
+          const pct = Math.round(s.ai_probability * 100);
+          return `<span class="sent ${sentClass(s.ai_probability)}" data-tip="${pct}% AI confidence">${escHtml(s.sentence)} </span>`;
+        }).join('');
+
+      document.getElementById('scoreSection').style.display  = 'block';
+      document.getElementById('resultSection').style.display = 'block';
+      document.getElementById('scoreSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    } catch {
+      errEl.textContent = 'Network error. Is the server running?';
+      errEl.style.display = 'block';
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* Ctrl/Cmd + Enter shortcut */
+  document.getElementById('inputText').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') analyze();
+  });
+</script>
+</body>
+</html>

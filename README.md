@@ -15,7 +15,7 @@ The code is split into a few small scripts:
 - `bert_finetune.py` fine-tunes DistilBERT for AI-vs-human classification and saves the model
 - `inference.py` scores a paragraph and also gives sentence-level probabilities
 - `evaluate.py` runs the saved model on the held-out test split and produces metrics plus a confusion matrix image
-- `gradio_ui.py` provides a small web interface for trying the detector interactively
+- `app.py` is a Flask web application that serves the detector as a local web UI with sentence-level colour highlights
 
 ## How the detector works
 
@@ -80,7 +80,9 @@ The trained artifacts are saved to `distilbert_detector/`.
 ├── bert_finetune.py
 ├── inference.py
 ├── evaluate.py
-├── gradio_ui.py
+├── app.py
+├── templates/
+│   └── index.html
 ├── data.csv
 ├── distilbert_detector/
 ├── images/
@@ -114,6 +116,32 @@ If you mainly want to inspect or use the saved model that already ships with the
 ```bash
 distilbert_detector/
 ```
+
+## Web UI
+
+`app.py` is a Flask application that wraps the inference pipeline and serves a browser-based detector at `http://127.0.0.1:5000`.
+
+To start it:
+
+```bash
+python app.py
+```
+
+The UI lets you either paste text directly or upload a `.txt`, `.pdf`, or `.docx` file. Text is extracted automatically and sent to the model. Results are shown as:
+
+- An overall AI confidence score with an animated progress bar and a verdict badge
+- Each sentence highlighted in one of four colours based on its individual confidence
+- A stats row showing total sentences, AI-flagged sentences, and human-flagged sentences
+
+Hovering over any highlighted sentence shows its exact confidence percentage in a tooltip.
+
+### API endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | Serves the web UI |
+| `POST` | `/analyze` | Accepts `{ "text": "..." }` JSON, returns verdict and per-sentence scores |
+| `POST` | `/upload` | Accepts a multipart file (`.txt`, `.pdf`, `.docx`), returns extracted text |
 
 ## Evaluation snapshot
 
