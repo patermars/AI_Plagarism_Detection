@@ -119,26 +119,26 @@
 
     /* ── Main ── */
     main {
-      width: 100%; max-width: 860px;
-      padding: 36px 20px 60px;
+      width: 100%; max-width: 100%;
+      padding: 40px 200px 80px;
       display: flex; flex-direction: column; gap: 20px;
     }
 
     /* ── Hero text ── */
     .hero {
       text-align: center;
-      padding: 8px 0 4px;
+      padding: 48px 0 32px;
     }
 
     .hero h2 {
-      font-size: 28px; font-weight: 800;
-      color: var(--text); letter-spacing: -.6px;
-      line-height: 1.25;
+      font-size: 42px; font-weight: 800;
+      color: var(--text); letter-spacing: -.8px;
+      line-height: 1.2;
     }
 
     .hero p {
-      margin-top: 8px;
-      font-size: 15px; color: var(--muted);
+      margin-top: 12px;
+      font-size: 17px; color: var(--muted);
     }
 
     /* ── Card ── */
@@ -150,12 +150,15 @@
       overflow: hidden;
     }
 
+    .card-inner { padding: 32px 28px 0; }
+    .score-inner { padding: 20px 28px 20px; }
+
     /* ── Drop zone ── */
     .drop-zone {
-      margin: 20px 20px 0;
+      margin: 0 0 16px;
       border: 2px dashed var(--border);
       border-radius: var(--radius-md);
-      padding: 22px 20px;
+      padding: 36px 28px;
       text-align: center;
       cursor: pointer;
       transition: background .18s, border-color .18s;
@@ -192,7 +195,7 @@
       background: var(--p-100);
       border-radius: var(--radius-sm);
       padding: 5px 12px;
-      margin: 10px 20px 0;
+      margin: 0 0 8px;
       width: fit-content;
       font-size: 13px; color: var(--p-500); font-weight: 500;
     }
@@ -208,7 +211,7 @@
     /* ── Divider ── */
     .or-divider {
       display: flex; align-items: center; gap: 12px;
-      margin: 14px 20px 0;
+      margin: 0;
       font-size: 12px; color: var(--subtle); font-weight: 500;
     }
 
@@ -219,10 +222,10 @@
 
     /* ── Textarea ── */
     textarea {
-      width: 100%; min-height: 160px;
+      width: 100%; min-height: 260px;
       border: none; outline: none; resize: vertical;
-      font-size: 15px; line-height: 1.75; color: var(--text);
-      padding: 16px 20px;
+      font-size: 16px; line-height: 1.8; color: var(--text);
+      padding: 16px 0;
       font-family: inherit;
       background: transparent;
       color-scheme: light dark;
@@ -241,7 +244,7 @@
     /* ── Input footer ── */
     .input-footer {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 20px;
+      padding: 14px 24px;
       border-top: 1px solid var(--border);
       background: var(--footer-bg);
     }
@@ -449,13 +452,13 @@
     /* ── Score section ── */
     #scoreSection { display: none; }
 
-    .score-inner { padding: 24px 24px 20px; }
+    .score-inner { padding: 20px 28px 20px; }
 
     .score-header {
       display: flex; flex-direction: column;
       align-items: center;
-      margin-bottom: 18px;
-      gap: 12px;
+      margin-bottom: 10px;
+      gap: 6px;
     }
 
     .score-label {
@@ -477,7 +480,7 @@
     /* ── Ring ── */
     .ring-wrap {
       display: flex; justify-content: center;
-      margin: 4px 0 8px;
+      margin: 2px 0 4px;
     }
 
     .ring-svg { transform: rotate(-90deg); }
@@ -506,13 +509,13 @@
 
     .ring-container {
       position: relative;
-      width: 170px; height: 170px;
+      width: 130px; height: 130px;
       display: flex; align-items: center; justify-content: center;
     }
 
     /* ── Legend ── */
     .legend {
-      display: flex; gap: 18px; margin-top: 16px; flex-wrap: wrap;
+      display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap;
     }
 
     .legend-item {
@@ -527,18 +530,18 @@
     /* ── Result section ── */
     #resultSection {
       display: none;
-      padding: 20px 24px 24px;
+      padding: 16px 28px 20px;
       border-top: 1px solid var(--border);
     }
 
     #resultSection h3 {
       font-size: 11px; font-weight: 700; color: var(--subtle);
       text-transform: uppercase; letter-spacing: .08em;
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
 
     #highlightedText {
-      font-size: 15px; line-height: 2.1; color: var(--text);
+      font-size: 15px; line-height: 1.75; color: var(--text);
     }
 
     /* ── Sentence highlights ── */
@@ -711,14 +714,14 @@
     }
     .stats-row {
       display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 12px; margin-top: 20px;
+      gap: 10px; margin-top: 12px;
     }
 
     .stat-box {
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 14px 16px;
+      padding: 10px 12px;
       text-align: center;
     }
 
@@ -779,6 +782,7 @@
 
   <!-- Input card -->
   <div class="card">
+    <div class="card-inner">
 
     <!-- Drop zone -->
     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
@@ -808,6 +812,7 @@
       placeholder="Paste or type your text here…"
       oninput="updateCount()"></textarea>
 
+    </div><!-- /.card-inner -->
     <div class="input-footer">
       <span id="charCount">0 characters</span>
       <button class="btn-analyze" id="analyzeBtn" onclick="analyze()">
@@ -823,7 +828,7 @@
       <div class="score-header">
         <div class="ring-wrap">
           <div class="ring-container">
-            <svg class="ring-svg" width="170" height="170" viewBox="0 0 170 170">
+            <svg class="ring-svg" width="130" height="130" viewBox="0 0 170 170">
               <circle class="ring-track" cx="85" cy="85" r="80"/>
               <circle class="ring-fill" id="ringFill" cx="85" cy="85" r="80"/>
             </svg>
