@@ -52,12 +52,17 @@ def analyze():
     bert_model, tokenizer, device = pipeline
     paragraph_score, sentence_scores = score_paragraph(text, bert_model, tokenizer, device)
 
+    ai_count = sum(1 for s in sentence_scores if s["ai_probability"] >= 0.65)
+    total     = len(sentence_scores)
+
     if paragraph_score >= 0.85:
         verdict = "Very likely AI-generated"
     elif paragraph_score >= 0.65:
         verdict = "Possibly AI-generated"
     elif paragraph_score >= 0.40:
         verdict = "Uncertain"
+    elif ai_count > 0 and total > 1:
+        verdict = f"Likely human-written ({ai_count} AI sentence{'s' if ai_count > 1 else ''} flagged)"
     else:
         verdict = "Likely Human-written"
 

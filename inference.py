@@ -46,12 +46,14 @@ def get_bert_probs(bert_model, tokenizer, texts, device, batch_size=32, max_len=
 
 def score_paragraph(paragraph, bert_model, tokenizer, device):
     # Scores the full paragraph as a single unit, then scores each sentence individually.
+    # The final paragraph score blends the whole-document score with sentence-level signals
+    # so that a few high-confidence AI sentences are not drowned out by human-majority context.
     # Falls back to the paragraph score when fewer than 2 sentences are detected.
     # Args: paragraph (str); bert_model; tokenizer; device — torch.device
     # Returns: (paragraph_score: float, sentence_scores: list[dict])
     #          sentence_scores dicts contain keys 'sentence' and 'ai_probability'
     paragraph_prob = get_bert_probs(bert_model, tokenizer, [paragraph], device)
-    paragraph_score = float(paragraph_prob[0])
+    doc_score = float(paragraph_prob[0])
 
     sentences = split_into_sentences(paragraph)
     sentence_scores = []
@@ -61,10 +63,27 @@ def score_paragraph(paragraph, bert_model, tokenizer, device):
             {"sentence": s, "ai_probability": round(float(p), 4)}
             for s, p in zip(sentences, sent_probs)
         ]
+
+        probs = np.array([s["ai_probability"] for s in sentence_scores])
+        sent_mean = float(probs.mean())
+        sent_max  = float(probs.max())
+        ai_ratio  = float((probs >= 0.65).sum()) / len(probs)
+
+        # Dynamic blend: the max-sentence weight grows with ai_ratio so that
+        # even 1-2 high-confidence AI sentences in a long human document are
+        # not drowned out by the doc-level score.
+        #   w_max  = 0.20 baseline + up to 0.40 extra as ai_ratio rises
+        #   w_doc  = shrinks as more sentences are flagged AI
+        #   w_mean = fixed at 0.25 to capture overall density
+        w_max  = 0.20 + 0.40 * ai_ratio
+        w_doc  = max(0.10, 0.50 - 0.40 * ai_ratio)
+        w_mean = 1.0 - w_max - w_doc
+        paragraph_score = w_doc * doc_score + w_mean * sent_mean + w_max * sent_max
     else:
         sentence_scores = [
-            {"sentence": paragraph.strip(), "ai_probability": round(paragraph_score, 4)}
+            {"sentence": paragraph.strip(), "ai_probability": round(doc_score, 4)}
         ]
+        paragraph_score = doc_score
 
     return paragraph_score, sentence_scores
 
@@ -75,12 +94,18 @@ def format_report(paragraph_score, sentence_scores):
     # Args: paragraph_score (float) — AI probability [0, 1];
     #       sentence_scores (list[dict]) — per-sentence scores from score_paragraph()
     # Returns: dict with keys 'verdict', 'paragraph_ai_score', 'sentences'
+    ai_sentences = [s for s in sentence_scores if s["ai_probability"] >= 0.65]
+    ai_count = len(ai_sentences)
+    total    = len(sentence_scores)
+
     if paragraph_score >= 0.85:
         verdict = "Very likely AI-generated"
     elif paragraph_score >= 0.65:
         verdict = "Possibly AI-generated"
     elif paragraph_score >= 0.40:
         verdict = "Uncertain"
+    elif ai_count > 0 and total > 1:
+        verdict = f"Likely human-written ({ai_count} AI sentence{'s' if ai_count > 1 else ''} flagged)"
     else:
         verdict = "Likely Human-written"
 

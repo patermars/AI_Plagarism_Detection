@@ -19,6 +19,7 @@
       --text:      #1A202C;
       --muted:     #718096;
       --subtle:    #A0AEC0;
+      --footer-bg: #FAFBFC;
 
       /* Primary — teal */
       --p-500:     #0D9488;
@@ -50,6 +51,24 @@
       --shadow-md: 0 4px 16px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.04);
     }
 
+    [data-theme="dark"] {
+      --bg:        #0F1117;
+      --surface:   #1A1D27;
+      --border:    #2A2E42;
+      --text:      #E8EAF0;
+      --muted:     #8B92A8;
+      --subtle:    #555E7A;
+      --footer-bg: #14161F;
+      --p-100:     #0D2D29;
+      --p-50:      #0A1F1D;
+      --c-ai-bg:   rgba(239,68,68,.18);
+      --c-pos-bg:  rgba(249,115,22,.18);
+      --c-unc-bg:  rgba(234,179,8,.18);
+      --c-hum-bg:  rgba(16,185,129,.18);
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.4);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.5);
+    }
+
     /* ── Base ── */
     body {
       font-family: 'Inter', system-ui, sans-serif;
@@ -59,6 +78,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      transition: background .25s, color .25s;
     }
 
     /* ── Header ── */
@@ -205,16 +225,25 @@
       padding: 16px 20px;
       font-family: inherit;
       background: transparent;
+      color-scheme: light dark;
     }
 
     textarea::placeholder { color: var(--subtle); }
+
+    textarea::-webkit-scrollbar { width: 6px; }
+    textarea::-webkit-scrollbar-track { background: transparent; }
+    textarea::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 99px;
+    }
+    textarea::-webkit-scrollbar-thumb:hover { background: var(--subtle); }
 
     /* ── Input footer ── */
     .input-footer {
       display: flex; align-items: center; justify-content: space-between;
       padding: 12px 20px;
       border-top: 1px solid var(--border);
-      background: #FAFBFC;
+      background: var(--footer-bg);
     }
 
     #charCount { font-size: 13px; color: var(--subtle); }
@@ -246,6 +275,136 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Keyframes ── */
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeUp  { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes statPop {
+      0%   { transform: scale(.7); opacity: 0; }
+      60%  { transform: scale(1.15); }
+      100% { transform: scale(1);  opacity: 1; }
+    }
+
+    /* ── Theme toggle ── */
+    .theme-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 5px 11px;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 500; color: var(--muted);
+      transition: background .18s, color .18s, border-color .18s;
+      margin-left: auto;
+    }
+    .theme-btn:hover { background: var(--border); color: var(--text); }
+    .theme-btn .icon-sun  { display: none; }
+    .theme-btn .icon-moon { display: inline; }
+    [data-theme="dark"] .theme-btn .icon-sun  { display: inline; }
+    [data-theme="dark"] .theme-btn .icon-moon { display: none; }
+
+    /* ── Loading overlay ── */
+    #loadingOverlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(247,248,250,.88);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 28px;
+      animation: fadeIn .25s ease;
+    }
+    [data-theme="dark"] #loadingOverlay { background: rgba(15,17,23,.88); }
+    #loadingOverlay.visible { display: flex; }
+
+    .loader-ring {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: 5px solid var(--border);
+      border-top-color: var(--p-500);
+      border-right-color: var(--p-400);
+      animation: spin .9s cubic-bezier(.6,0,.4,1) infinite;
+      box-shadow: 0 0 28px rgba(13,148,136,.20);
+    }
+
+    .loader-text-wrap { text-align: center; }
+
+    .loader-step {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      letter-spacing: -.2px; min-height: 24px;
+      animation: fadeUp .35s ease;
+    }
+
+    .loader-sub {
+      font-size: 12px; color: var(--muted); margin-top: 5px;
+    }
+
+    .loader-track {
+      width: 260px; height: 4px;
+      background: var(--border); border-radius: 99px; overflow: hidden;
+    }
+
+    .loader-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--p-500), var(--p-400));
+      border-radius: 99px; width: 0%;
+      transition: width .55s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ── Card entrance ── */
+    .card-enter { animation: fadeUp .45s cubic-bezier(.4,0,.2,1) both; }
+
+    /* ── Stat pop ── */
+    .stat-val.pop { animation: statPop .35s cubic-bezier(.4,0,.2,1); }
+
+    /* ── Result slide ── */
+    #resultSection.visible { animation: slideIn .4s cubic-bezier(.4,0,.2,1) both; }
+
+    /* ── Skeleton shimmer ── */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position:  600px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg,
+        var(--border) 25%,
+        var(--bg)     50%,
+        var(--border) 75%
+      );
+      background-size: 600px 100%;
+      animation: shimmer 1.4s infinite linear;
+      border-radius: 6px;
+      color: transparent !important;
+      pointer-events: none;
+      user-select: none;
+    }
+    .skeleton * { visibility: hidden; }
+
+    /* ring skeleton — replaces the SVG with a pulsing disc */
+    .ring-container.skeleton { border-radius: 50%; }
+    .ring-container.skeleton svg,
+    .ring-container.skeleton .ring-label { opacity: 0; }
+
+    /* skeleton lines for the breakdown section */
+    .skel-line {
+      height: 14px; border-radius: 6px; margin-bottom: 10px;
+      background: linear-gradient(90deg,
+        var(--border) 25%,
+        var(--bg)     50%,
+        var(--border) 75%
+      );
+      background-size: 600px 100%;
+      animation: shimmer 1.4s infinite linear;
+    }
+
+    /* input card pulse border while loading */
+    @keyframes borderPulse {
+      0%, 100% { border-color: var(--border); }
+      50%       { border-color: var(--p-400); }
+    }
+    .card.analyzing { animation: borderPulse 1.6s ease-in-out infinite; }
+
     /* ── Error ── */
     #errorMsg {
       display: none;
@@ -261,18 +420,19 @@
     .score-inner { padding: 24px 24px 20px; }
 
     .score-header {
-      display: flex; align-items: flex-start; justify-content: space-between;
+      display: flex; flex-direction: column;
+      align-items: center;
       margin-bottom: 18px;
+      gap: 12px;
     }
 
     .score-label {
       font-size: 12px; font-weight: 600; color: var(--subtle);
       text-transform: uppercase; letter-spacing: .06em;
-      margin-bottom: 6px;
     }
 
     .score-pct {
-      font-size: 42px; font-weight: 800;
+      font-size: 38px; font-weight: 800;
       letter-spacing: -1.5px; line-height: 1;
     }
 
@@ -280,19 +440,42 @@
       font-size: 13px; font-weight: 600;
       padding: 6px 14px; border-radius: 20px;
       white-space: nowrap;
-      margin-top: 4px;
     }
 
-    /* ── Bar ── */
-    .bar-track {
-      height: 8px; background: var(--border);
-      border-radius: 99px; overflow: hidden;
+    /* ── Ring ── */
+    .ring-wrap {
+      display: flex; justify-content: center;
+      margin: 4px 0 8px;
     }
 
-    .bar-fill {
-      height: 100%; border-radius: 99px;
-      transition: width .9s cubic-bezier(.4,0,.2,1);
-      width: 0%;
+    .ring-svg { transform: rotate(-90deg); }
+
+    .ring-track {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 10;
+    }
+
+    .ring-fill {
+      fill: none;
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-dasharray: 502;
+      stroke-dashoffset: 502;
+      transition: stroke-dashoffset .9s cubic-bezier(.4,0,.2,1), stroke .4s;
+    }
+
+    .ring-label {
+      position: absolute;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      inset: 0;
+    }
+
+    .ring-container {
+      position: relative;
+      width: 170px; height: 170px;
+      display: flex; align-items: center; justify-content: center;
     }
 
     /* ── Legend ── */
@@ -366,12 +549,6 @@
     .v-uncertain { background: #FEF9C3; color: var(--c-unc-text); }
     .v-human     { background: #D1FAE5; color: var(--c-hum-text); }
 
-    /* Bar colours */
-    .bar-very-ai   { background: var(--c-ai-bar); }
-    .bar-possibly  { background: var(--c-pos-bar); }
-    .bar-uncertain { background: var(--c-unc-bar); }
-    .bar-human     { background: var(--c-hum-bar); }
-
     /* Score pct colours */
     .score-very-ai   { color: #EF4444; }
     .score-possibly  { color: #F97316; }
@@ -410,6 +587,10 @@
   <div class="logo">AI</div>
   <h1>AI Detector</h1>
   <span class="badge">DistilBERT</span>
+  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle dark mode">
+    <span class="icon-moon">&#9790;</span>
+    <span class="icon-sun">&#9728;</span>
+  </button>
 </header>
 
 <!-- ── Main ── -->
@@ -421,6 +602,16 @@
   </div>
 
   <div id="errorMsg"></div>
+
+  <!-- Loading overlay -->
+  <div id="loadingOverlay">
+    <div class="loader-ring"></div>
+    <div class="loader-text-wrap">
+      <div class="loader-step" id="loaderStep">Preparing analysis…</div>
+      <div class="loader-sub" id="loaderSub">DistilBERT · 256-token window</div>
+    </div>
+    <div class="loader-track"><div class="loader-bar" id="loaderBar"></div></div>
+  </div>
 
   <!-- Input card -->
   <div class="card">
@@ -466,15 +657,19 @@
   <div class="card" id="scoreSection">
     <div class="score-inner">
       <div class="score-header">
-        <div>
-          <div class="score-label">AI Confidence</div>
-          <div class="score-pct" id="scorePct">—</div>
+        <div class="ring-wrap">
+          <div class="ring-container">
+            <svg class="ring-svg" width="170" height="170" viewBox="0 0 170 170">
+              <circle class="ring-track" cx="85" cy="85" r="80"/>
+              <circle class="ring-fill" id="ringFill" cx="85" cy="85" r="80"/>
+            </svg>
+            <div class="ring-label">
+              <div class="score-label">AI Confidence</div>
+              <div class="score-pct" id="scorePct">—</div>
+              <div class="verdict-badge" id="verdictBadge">—</div>
+            </div>
+          </div>
         </div>
-        <div class="verdict-badge" id="verdictBadge">—</div>
-      </div>
-
-      <div class="bar-track">
-        <div class="bar-fill" id="barFill"></div>
       </div>
 
       <div class="legend">
@@ -512,7 +707,16 @@
     <!-- Highlighted text -->
     <div id="resultSection">
       <h3>Sentence-level breakdown</h3>
-      <div id="highlightedText"></div>
+      <div id="highlightedText">
+        <!-- skeleton lines shown while loading -->
+        <div id="skelLines">
+          <div class="skel-line" style="width:100%"></div>
+          <div class="skel-line" style="width:88%"></div>
+          <div class="skel-line" style="width:94%"></div>
+          <div class="skel-line" style="width:76%"></div>
+          <div class="skel-line" style="width:90%"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -544,10 +748,67 @@
   }
 
   function setLoading(on, label) {
-    const btn = document.getElementById('analyzeBtn');
+    const btn      = document.getElementById('analyzeBtn');
+    const inputCard = btn.closest('.card');
     btn.disabled = on;
     document.getElementById('spinner').style.display = on ? 'block' : 'none';
     document.getElementById('btnLabel').textContent = label || 'Analyze Text';
+    inputCard.classList.toggle('analyzing', on);
+    if (on) startLoader(); else stopLoader();
+  }
+
+  /* ── Loading overlay ── */
+  const STEPS = [
+    ['Analyzing linguistic patterns…',  'Scanning syntax and vocabulary'],
+    ['Checking sentence structure…',     'Looking for formulaic phrasing'],
+    ['Measuring lexical diversity…',     'Comparing entropy signatures'],
+    ['Running token classification…',    'DistilBERT inference in progress'],
+    ['Scoring each sentence…',           'Building per-sentence confidence map'],
+    ['Almost there…',                    'Finalising results'],
+  ];
+  let _stepTimer, _stepIdx;
+
+  function startLoader() {
+    const overlay = document.getElementById('loadingOverlay');
+    const stepEl  = document.getElementById('loaderStep');
+    const subEl   = document.getElementById('loaderSub');
+    const barEl   = document.getElementById('loaderBar');
+    _stepIdx = 0;
+    barEl.style.transition = 'none';
+    barEl.style.width = '0%';
+    void barEl.offsetWidth;
+    barEl.style.transition = '';
+    overlay.classList.add('visible');
+
+    function tick() {
+      const [msg, sub] = STEPS[_stepIdx % STEPS.length];
+      stepEl.textContent = msg;
+      subEl.textContent  = sub;
+      stepEl.style.animation = 'none';
+      void stepEl.offsetWidth;
+      stepEl.style.animation = '';
+      barEl.style.width = Math.min(90, (_stepIdx + 1) * (90 / STEPS.length)) + '%';
+      _stepIdx++;
+      _stepTimer = setTimeout(tick, 900);
+    }
+    tick();
+  }
+
+  function stopLoader() {
+    clearTimeout(_stepTimer);
+    const barEl = document.getElementById('loaderBar');
+    barEl.style.width = '100%';
+    setTimeout(() => {
+      document.getElementById('loadingOverlay').classList.remove('visible');
+    }, 420);
+  }
+
+  function popStat(id, val) {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
   }
 
   /* ── Drag & drop ── */
@@ -622,6 +883,29 @@
 
     setLoading(true, 'Analyzing…');
 
+    /* ── Show results card immediately in skeleton state ── */
+    const scoreSection  = document.getElementById('scoreSection');
+    const resultSection = document.getElementById('resultSection');
+    const ringContainer = document.querySelector('.ring-container');
+
+    scoreSection.style.display = 'block';
+    scoreSection.classList.remove('card-enter');
+    void scoreSection.offsetWidth;
+    scoreSection.classList.add('card-enter');
+
+    resultSection.style.display = 'block';
+    document.getElementById('skelLines').style.display = 'block';
+    document.getElementById('highlightedText').querySelectorAll('.sent').forEach(el => el.remove());
+
+    /* skeleton on ring + stat boxes */
+    ringContainer.classList.add('skeleton');
+    document.querySelectorAll('.stat-box').forEach(b => b.classList.add('skeleton'));
+    document.getElementById('scorePct').textContent    = '—';
+    document.getElementById('verdictBadge').textContent = '—';
+    document.getElementById('verdictBadge').className   = 'verdict-badge';
+
+    scoreSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
     try {
       const res  = await fetch('/analyze', {
         method: 'POST',
@@ -633,40 +917,48 @@
       if (!res.ok) {
         errEl.textContent = data.error || 'Something went wrong.';
         errEl.style.display = 'block';
+        scoreSection.style.display = 'none';
         return;
       }
 
-      const cls = scoreClass(data.ai_score);
+      /* ── Remove skeletons ── */
+      ringContainer.classList.remove('skeleton');
+      document.querySelectorAll('.stat-box').forEach(b => b.classList.remove('skeleton'));
 
-      /* score bar */
-      document.getElementById('scorePct').textContent  = data.ai_score + '%';
-      document.getElementById('scorePct').className    = 'score-pct score-' + cls;
+      const cls = scoreClass(data.ai_score);
+      const ringColors = { 'very-ai': '#EF4444', 'possibly': '#F97316', 'uncertain': '#EAB308', 'human': '#10B981' };
+
+      document.getElementById('scorePct').textContent     = data.ai_score + '%';
+      document.getElementById('scorePct').className       = 'score-pct score-' + cls;
       document.getElementById('verdictBadge').textContent = data.verdict;
       document.getElementById('verdictBadge').className   = 'verdict-badge v-' + cls;
-      document.getElementById('barFill').style.width   = data.ai_score + '%';
-      document.getElementById('barFill').className     = 'bar-fill bar-' + cls;
+      const ring = document.getElementById('ringFill');
+      ring.style.stroke = ringColors[cls];
+      ring.style.strokeDashoffset = 502 - (502 * data.ai_score / 100);
 
-      /* stats */
       const total   = data.sentences.length;
       const aiCount = data.sentences.filter(s => s.ai_probability >= .65).length;
-      document.getElementById('statSentences').textContent = total;
-      document.getElementById('statAI').textContent        = aiCount;
-      document.getElementById('statHuman').textContent     = total - aiCount;
+      popStat('statSentences', total);
+      popStat('statAI',        aiCount);
+      popStat('statHuman',     total - aiCount);
 
-      /* highlighted sentences */
+      /* swap skeleton lines for real highlights */
+      document.getElementById('skelLines').style.display = 'none';
       document.getElementById('highlightedText').innerHTML =
+        '<div id="skelLines" style="display:none"></div>' +
         data.sentences.map(s => {
           const pct = Math.round(s.ai_probability * 100);
           return `<span class="sent ${sentClass(s.ai_probability)}" data-tip="${pct}% AI confidence">${escHtml(s.sentence)} </span>`;
         }).join('');
 
-      document.getElementById('scoreSection').style.display  = 'block';
-      document.getElementById('resultSection').style.display = 'block';
-      document.getElementById('scoreSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      resultSection.classList.remove('visible');
+      void resultSection.offsetWidth;
+      resultSection.classList.add('visible');
 
     } catch {
       errEl.textContent = 'Network error. Is the server running?';
       errEl.style.display = 'block';
+      scoreSection.style.display = 'none';
     } finally {
       setLoading(false);
     }
@@ -676,6 +968,17 @@
   document.getElementById('inputText').addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') analyze();
   });
+
+  /* ── Dark mode ── */
+  function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  }
+  (function() {
+    const saved = localStorage.getItem('theme');
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+  })();
 </script>
 </body>
 </html>
