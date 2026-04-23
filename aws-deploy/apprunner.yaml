@@ -1,0 +1,10 @@
+version: 1.0
+runtime: docker
+image:
+  repositoryType: ECR
+  imageIdentifier: 137372353553.dkr.ecr.us-east-1.amazonaws.com/ai-plagiarism:latest
+  imageConfiguration:
+    port: 5000
+instanceConfiguration:
+  cpu: 1 vCPU
+  memory: 2 GB

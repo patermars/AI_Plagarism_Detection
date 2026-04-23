@@ -1,0 +1,39 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: us-east-1
+    REPOSITORY_URI: 137372353553.dkr.ecr.us-east-1.amazonaws.com/ai-plagiarism
+    DOCKER_BUILDKIT: "1"
+
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+      - git init
+      - git config --global user.email "codebuild@example.com"
+      - git config --global user.name "codebuild"
+      - git add .
+      - pip install "dvc[s3]" --quiet
+      - dvc pull distilbert_detector
+      - aws s3 cp s3://ai-plagiarism-dvc/deploy.flag deploy.flag
+  build:
+    commands:
+      - docker build
+          --cache-from $REPOSITORY_URI:latest
+          --build-arg BUILDKIT_INLINE_CACHE=1
+          -t ai-plagiarism
+          -t $REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+          -t $REPOSITORY_URI:latest
+          .
+  post_build:
+    commands:
+      - |
+        FLAG=$(cat deploy.flag 2>/dev/null || echo "NO")
+        echo "Deployment gate: $FLAG"
+        if [ "$FLAG" != "YES" ]; then
+          echo "Model did not pass quality gate. Skipping deploy."
+          exit 1
+        fi
+      - docker push $REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - docker push $REPOSITORY_URI:latest

@@ -1,0 +1,86 @@
+schema: '2.0'
+stages:
+  download:
+    cmd: python dataset_downloading.py
+    deps:
+    - path: dataset_downloading.py
+      hash: md5
+      md5: 0eb45bed759deb544addb235ec69cbdb
+      size: 3912
+    params:
+      params.yaml:
+        data.samples_per_class: 40000
+    outs:
+    - path: data.csv
+      hash: md5
+      md5: e6bbfa6f4723ab01058bd1a6e8660022
+      size: 131589984
+  preprocess:
+    cmd: python preprocessing.py
+    deps:
+    - path: data.csv
+      hash: md5
+      md5: e6bbfa6f4723ab01058bd1a6e8660022
+      size: 131589984
+    - path: preprocessing.py
+      hash: md5
+      md5: 3e4ea312118739ae4d7bb03182155962
+      size: 2991
+    params:
+      params.yaml:
+        data.seed: 42
+    outs:
+    - path: splits/
+      hash: md5
+      md5: 7bc43d79243e1fdb9c45d9fe53ebada9.dir
+      size: 131462500
+      nfiles: 6
+  train:
+    cmd: python bert_finetune.py
+    deps:
+    - path: bert_finetune.py
+      hash: md5
+      md5: 76cdde095fb2238d38dca63533ab4db2
+      size: 9235
+    - path: splits/
+      hash: md5
+      md5: 7bc43d79243e1fdb9c45d9fe53ebada9.dir
+      size: 131462500
+      nfiles: 6
+    params:
+      params.yaml:
+        train:
+          model_name: distilbert-base-uncased
+          max_seq_len: 256
+          batch_size: 32
+          epochs: 3
+          learning_rate: 2e-05
+          warmup_ratio: 0.1
+          save_dir: distilbert_detector
+    outs:
+    - path: distilbert_detector/
+      hash: md5
+      md5: 75a45933a705e801e64163f9a19712e7.dir
+      size: 268545411
+      nfiles: 5
+  evaluate:
+    cmd: python evaluate.py
+    deps:
+    - path: distilbert_detector/
+      hash: md5
+      md5: 75a45933a705e801e64163f9a19712e7.dir
+      size: 268545411
+      nfiles: 5
+    - path: evaluate.py
+      hash: md5
+      md5: 8cef46279bf0d58434bf8402f16792d9
+      size: 5896
+    - path: inference.py
+      hash: md5
+      md5: a0a2cbd480a15c3992befb4b6bbb588b
+      size: 8743
+    - path: splits/
+      hash: md5
+      md5: 7bc43d79243e1fdb9c45d9fe53ebada9.dir
+      size: 131462500
+      nfiles: 6

@@ -1,0 +1,37 @@
+stages:
+  download:
+    cmd: python dataset_downloading.py
+    deps:
+      - dataset_downloading.py
+    params:
+      - data.samples_per_class
+    outs:
+      - data.csv
+
+  preprocess:
+    cmd: python preprocessing.py
+    deps:
+      - preprocessing.py
+      - data.csv
+    params:
+      - data.seed
+    outs:
+      - splits/
+
+  train:
+    cmd: python bert_finetune.py
+    deps:
+      - bert_finetune.py
+      - splits/
+    params:
+      - train
+    outs:
+      - distilbert_detector/
+
+  evaluate:
+    cmd: python evaluate.py
+    deps:
+      - evaluate.py
+      - inference.py
+      - distilbert_detector/
+      - splits/

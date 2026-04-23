@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# DVC
+/tmp/
+.dvc/tmp/
+.dvc/cache/
+
+# MLflow
+mlruns/
+
+# Data & model artifacts (tracked by DVC, not git)
+data.csv
+splits/
+distilbert_detector/
+metrics.json
+confusion_matrix.png
+
+
+# Build artifacts
+deploy.flag
+
+# Secrets
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/
+/splits
+/distilbert_detector

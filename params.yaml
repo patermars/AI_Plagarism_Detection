@@ -1,0 +1,13 @@
+train:
+  model_name: distilbert-base-uncased
+  max_seq_len: 256
+  batch_size: 32
+  epochs: 3
+  learning_rate: 2e-5
+  warmup_ratio: 0.1
+  save_dir: distilbert_detector
+
+data:
+  csv_path: data.csv
+  seed: 42
+  samples_per_class: 40000

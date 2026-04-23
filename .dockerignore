@@ -1,0 +1,36 @@
+# Dev/training files
+dataset_downloading.py
+preprocessing.py
+bert_finetune.py
+evaluate.py
+params.yaml
+dvc.yaml
+dvc.lock
+.dvc/
+data.csv
+splits/
+mlflow.db
+mlruns/
+buildspec.yml
+
+# Study/docs
+ablation study/
+images/
+DEPLOY.md
+README.md
+LICENSE
+
+# CI
+.github/
+aws-deploy/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Misc
+.git/
+.gitignore
+$env
