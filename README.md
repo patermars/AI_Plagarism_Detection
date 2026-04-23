@@ -1,37 +1,42 @@
 # AI Plagiarism Detection
 
-This project is simple binary text classifier that tries to answer one question: does a piece of writing look more like human writing or AI-generated writing?
+A binary text classifier that answers one question: does a piece of writing look more like human writing or AI-generated writing?
 
-The model behind it is a fine-tuned DistilBERT classifier trained on a mixed dataset of essays, Q&A responses, Wikipedia-style text, news articles, and Reddit posts. The repository also includes a saved model under `distilbert_detector/`, so the project is not just training code on paper; there is already a trained checkpoint in the repo.
+The model is a fine-tuned DistilBERT classifier trained on a mixed dataset of essays, Q&A responses, Wikipedia-style text, news articles, and Reddit posts. A trained checkpoint ships with the repo under `distilbert_detector/`.
 
-It is best thought of as an experiment or a screening tool, not a final authority. It can be useful for flagging suspicious text, but it should not be used as proof that someone cheated or copied from an AI system.
+It is best thought of as a screening tool, not a final authority. It can flag suspicious text but should not be used as proof that someone cheated or copied from an AI system.
+
+---
+
+## Pipeline architecture
+
+![Pipeline Architecture](images/pipeline.png)
+
+---
 
 ## What is in the repo
 
-The code is split into a few small scripts:
+- `dataset_downloading.py` — pulls text from Hugging Face datasets, balances classes, writes `data.csv`
+- `preprocessing.py` — cleans text, creates stratified train/val/test splits
+- `bert_finetune.py` — fine-tunes DistilBERT, logs params and metrics to MLflow, saves model
+- `inference.py` — scores a paragraph and gives sentence-level probabilities
+- `evaluate.py` — runs the saved model on the test split, logs final metrics to MLflow
+- `gradio_ui.py` — Gradio web app that serves the detector
+- `dvc.yaml` — DVC pipeline definition
+- `params.yaml` — all hyperparameters and data settings
+- `buildspec.yml` — CodeBuild build instructions
 
-- `dataset_downloading.py` pulls text from several Hugging Face datasets, balances the classes, and writes the combined dataset to `data.csv`
-- `preprocessing.py` does light cleaning and creates stratified train, validation, and test splits
-- `bert_finetune.py` fine-tunes DistilBERT for AI-vs-human classification and saves the model
-- `inference.py` scores a paragraph and also gives sentence-level probabilities
-- `evaluate.py` runs the saved model on the held-out test split and produces metrics plus a confusion matrix image
-- `app.py` is a Flask web application that serves the detector as a local web UI with sentence-level colour highlights
+---
 
 ## How the detector works
 
-The pipeline is intentionally straightforward:
+1. Text is cleaned lightly — HTML tags and URLs are removed, whitespace is collapsed. Punctuation and casing are kept because the model uses those signals.
 
-1. Text is cleaned lightly.
-   HTML tags and URLs are removed, and repeated whitespace is collapsed. Punctuation and casing are kept because the model can use those signals.
+2. The cleaned text is tokenized for DistilBERT, truncated to 256 tokens.
 
-2. The cleaned text is tokenized for DistilBERT.
-   Inputs are truncated to 256 tokens.
+3. The model predicts a binary label: `AI` or `Human`.
 
-3. The model predicts a binary label.
-   The two classes are `AI` and `Human`.
-
-4. A probability is converted into a readable verdict.
-   The repo currently uses these thresholds:
+4. A probability is converted into a verdict using these thresholds:
 
 | AI confidence | Verdict |
 |---|---|
@@ -40,13 +45,11 @@ The pipeline is intentionally straightforward:
 | `40% to <65%` | Uncertain |
 | `< 40%` | Likely human-written |
 
-For longer inputs, the project also scores each sentence separately so you can see which parts of a paragraph look more suspicious than others.
+For longer inputs, each sentence is scored separately so you can see which parts look most suspicious.
+
+---
 
 ## Training data
-
-The dataset builder combines multiple sources rather than relying on a single benchmark. That makes the task a bit less narrow, although it also means the final model inherits the quirks of each source.
-
-Sources used in `dataset_downloading.py`:
 
 | Dataset | Used for |
 |---|---|
@@ -56,20 +59,24 @@ Sources used in `dataset_downloading.py`:
 | `cnn_dailymail` | Human-written news articles |
 | `webis/tldr-17` | Human-written Reddit-style informal text |
 
-The script filters out very short entries, balances the two classes, and caps the final dataset at `40,000` samples per class.
+Classes are balanced and capped at `40,000` samples per class.
+
+---
 
 ## Model setup
 
-The training script uses:
+| Parameter | Value |
+|---|---|
+| Base model | `distilbert-base-uncased` |
+| Max sequence length | `256` |
+| Batch size | `32` |
+| Epochs | `3` |
+| Learning rate | `2e-5` |
+| Warmup ratio | `0.1` |
 
-- Base model: `distilbert-base-uncased`
-- Max sequence length: `256`
-- Batch size: `32`
-- Epochs: `3`
-- Learning rate: `2e-5`
-- Warmup ratio: `0.1`
+All parameters live in `params.yaml` and are read by the training script at runtime.
 
-The trained artifacts are saved to `distilbert_detector/`.
+---
 
 ## Project layout
 
@@ -80,72 +87,99 @@ The trained artifacts are saved to `distilbert_detector/`.
 ├── bert_finetune.py
 ├── inference.py
 ├── evaluate.py
-├── app.py
-├── templates/
-│   └── index.html
-├── data.csv
-├── distilbert_detector/
+├── gradio_ui.py
+├── dvc.yaml
+├── dvc.lock
+├── params.yaml
+├── buildspec.yml
+├── Dockerfile
+├── distilbert_detector/       # tracked by DVC, not git
+├── splits/                    # tracked by DVC, not git
+├── data.csv                   # tracked by DVC, not git
 ├── images/
 │   ├── architecture.png
 │   └── confusion_matrix.png
 ├── requirements.txt
+├── DEPLOY.md
 └── LICENSE
 ```
 
-## Setup
+---
 
-Create a virtual environment if you want to keep dependencies isolated, then install the requirements:
+## Setup
 
 ```bash
 pip install -r requirements.txt
 ```
 
+---
+
 ## Typical workflow
 
-If you want to rebuild the dataset and retrain the model from scratch:
+### Retrain from scratch
 
 ```bash
-python dataset_downloading.py
-python preprocessing.py
-python bert_finetune.py
-python evaluate.py
+# Run the full DVC pipeline (skips unchanged stages)
+python -m dvc repro
+
+# Push artifacts to S3
+python -m dvc push
+
+# Commit the updated pipeline lock and push to CodeCommit
+git add dvc.lock
+git commit -m "chore: retrain"
+git push
 ```
 
-If you mainly want to inspect or use the saved model that already ships with the repo, the important directory is:
+Pushing to CodeCommit triggers CodeBuild, which pulls the model from S3, builds the Docker image, pushes it to ECR, and App Runner redeploys automatically.
+
+### Use the existing model
 
 ```bash
-distilbert_detector/
+# Pull model artifacts from S3
+python -m dvc pull
+
+# Run the Gradio UI locally
+python gradio_ui.py
 ```
 
-## Web UI
+---
 
-`app.py` is a Flask application that wraps the inference pipeline and serves a browser-based detector at `http://127.0.0.1:5000`.
+## DVC
 
-To start it:
+Data and model artifacts are versioned in S3 via DVC. Git only stores the lightweight `.dvc` pointer files and `dvc.lock`.
+
+| Artifact | Tracked by |
+|---|---|
+| `data.csv` | DVC → S3 |
+| `splits/` | DVC → S3 |
+| `distilbert_detector/` | DVC → S3 |
+| `metrics.json` | DVC metrics |
+| `confusion_matrix.png` | DVC plots |
+
+---
+
+## MLflow
+
+Every training run logs to MLflow automatically:
+
+- Parameters: model name, batch size, epochs, learning rate, warmup ratio
+- Per-epoch metrics: training loss, validation AUC
+- Final metrics: accuracy, ROC-AUC, F1, precision, recall, MCC
+- Artifacts: confusion matrix
+
+To view the experiment UI locally:
 
 ```bash
-python app.py
+set MLFLOW_TRACKING_URI=file:///D:/kodes/AI_Plag_Detection/mlruns
+python -m mlflow ui --backend-store-uri file:///D:/kodes/AI_Plag_Detection/mlruns
 ```
 
-The UI lets you either paste text directly or upload a `.txt`, `.pdf`, or `.docx` file. Text is extracted automatically and sent to the model. Results are shown as:
+Open `http://localhost:5000`.
 
-- An overall AI confidence score with an animated progress bar and a verdict badge
-- Each sentence highlighted in one of four colours based on its individual confidence
-- A stats row showing total sentences, AI-flagged sentences, and human-flagged sentences
-
-Hovering over any highlighted sentence shows its exact confidence percentage in a tooltip.
-
-### API endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/` | Serves the web UI |
-| `POST` | `/analyze` | Accepts `{ "text": "..." }` JSON, returns verdict and per-sentence scores |
-| `POST` | `/upload` | Accepts a multipart file (`.txt`, `.pdf`, `.docx`), returns extracted text |
+---
 
 ## Evaluation snapshot
-
-The repository reports the following test-set results in its current form:
 
 | Metric | Score |
 |---|---|
@@ -156,7 +190,9 @@ The repository reports the following test-set results in its current form:
 | Recall (macro) | `0.9782` |
 | MCC | `0.9570` |
 
-These numbers are strong, but they should still be read with caution. AI-detection performance often drops when the writing style, model family, or domain shifts away from the training data.
+These numbers are strong but should be read with caution. Performance often drops when the writing style, model family, or domain shifts away from the training data.
+
+---
 
 ## Visuals
 
@@ -168,16 +204,20 @@ Confusion matrix:
 
 ![Confusion Matrix](images/confusion_matrix.png)
 
+---
+
 ## Limitations
 
 - This is a classifier, not a plagiarism judge
 - A high score does not prove misconduct
 - Short passages are harder to classify reliably
-- The model is mainly set up for English text
-- Newer language models may produce writing patterns that this model has not seen
-- Human writing that is very polished, formulaic, or edited heavily can look "AI-like"
-- AI writing that is deliberately roughened or rewritten by a person can look human
+- The model is set up for English text only
+- Newer language models may produce patterns this model has not seen
+- Very polished or formulaic human writing can look AI-like
+- AI writing that is deliberately roughened can look human
+
+---
 
 ## License
 
-This project is released under the MIT License. See [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE).
